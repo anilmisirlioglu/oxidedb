@@ -1,0 +1,27 @@
+# Build
+/target
+
+# Logs
+.server.log
+.node-*.log
+
+# Data directories
+/data-*
+/tmp/oxidedb-*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TLS test certs
+*.pem
+*.key
+*.crt
+!docs/**/*.pem

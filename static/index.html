@@ -1,0 +1,3243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OxideDB Console</title>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #161922;
+  --bg-tertiary: #1c1f2e;
+  --bg-card: #1e2133;
+  --bg-hover: #252940;
+  --border: #2a2e3f;
+  --text-primary: #e4e6ef;
+  --text-secondary: #8b8fa3;
+  --text-muted: #5c6078;
+  --accent: #6c5ce7;
+  --accent-light: #a29bfe;
+  --accent-glow: rgba(108,92,231,0.3);
+  --success: #00b894;
+  --success-bg: rgba(0,184,148,0.12);
+  --warning: #fdcb6e;
+  --warning-bg: rgba(253,203,110,0.12);
+  --danger: #e17055;
+  --danger-bg: rgba(225,112,85,0.12);
+  --info: #74b9ff;
+  --info-bg: rgba(116,185,255,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --transition: all 0.2s ease;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sidebar-logo .logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff;
+}
+.sidebar-logo .logo-text {
+  font-size: 16px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-light), var(--text-primary));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.sidebar-logo .logo-version { font-size: 10px; color: var(--text-muted); }
+.sidebar-nav { flex:1; padding: 12px; overflow-y: auto; }
+.nav-section { margin-bottom: 8px; }
+.nav-section-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-muted); padding: 8px 12px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: var(--transition);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active {
+  background: var(--accent-glow); color: var(--accent-light);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.nav-item svg { width:18px; height:18px; flex-shrink:0; }
+.sidebar-footer {
+  padding: 16px; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted); text-align: center;
+}
+.status-dot {
+  width:8px; height:8px; border-radius:50%; display:inline-block;
+  margin-right:6px; animation: pulse 2s infinite;
+}
+.status-dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.status-dot.yellow { background: var(--warning); }
+.status-dot.red { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* Main Content */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar {
+  height: 56px; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; flex-shrink:0;
+}
+.topbar h1 { font-size:18px; font-weight:600; }
+.topbar-actions { display:flex; gap:8px; align-items:center; }
+.content { flex:1; overflow-y:auto; padding:24px; }
+
+/* Cards & Grid */
+.grid { display:grid; gap:16px; }
+.grid-4 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+.card {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius); padding:20px;
+  transition: var(--transition);
+}
+.card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+.stat-card { text-align:center; }
+.stat-card .stat-icon {
+  width:48px; height:48px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  margin: 0 auto 12px; font-size:22px;
+}
+.stat-card .stat-value { font-size:28px; font-weight:700; margin-bottom:4px; }
+.stat-card .stat-label { font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+
+/* Buttons */
+.btn {
+  padding: 8px 16px; border-radius: var(--radius-sm); border:none;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: var(--transition); display: inline-flex; align-items:center; gap:6px;
+}
+.btn-primary { background: var(--accent); color:#fff; }
+.btn-primary:hover { background: var(--accent-light); box-shadow: 0 4px 12px var(--accent-glow); }
+.btn-secondary { background: var(--bg-hover); color: var(--text-primary); border:1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); border:1px solid transparent; }
+.btn-danger:hover { border-color: var(--danger); }
+.btn-success { background: var(--success-bg); color: var(--success); }
+.btn-sm { padding:5px 10px; font-size:12px; }
+.btn-icon { padding:6px; width:32px; height:32px; justify-content:center; }
+
+/* Tables */
+.table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:12px 16px; text-align:left; font-size:13px; }
+th { background:var(--bg-tertiary); color:var(--text-secondary); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+td { border-bottom:1px solid var(--border); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--bg-hover); }
+
+/* Forms */
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
+input, select, textarea {
+  width:100%; padding:10px 14px; background:var(--bg-primary);
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  color:var(--text-primary); font-size:13px; font-family:inherit;
+  transition: var(--transition); outline:none;
+}
+input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+textarea { resize:vertical; min-height:120px; font-family:'SF Mono',Monaco,Consolas,monospace; }
+
+/* Modal */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000; backdrop-filter:blur(4px); opacity:0;
+  pointer-events:none; transition:opacity 0.2s;
+}
+.modal-overlay.active { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px; width:520px; max-width:90vw;
+  max-height:85vh; overflow-y:auto; box-shadow:var(--shadow);
+  transform:translateY(20px); transition:transform 0.2s;
+}
+.modal-overlay.active .modal { transform:translateY(0); }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.modal-header h2 { font-size:18px; }
+.modal-close { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:20px; padding:4px; }
+.modal-close:hover { color:var(--text-primary); }
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+/* Badges */
+.badge {
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px;
+}
+.badge-success { background:var(--success-bg); color:var(--success); }
+.badge-warning { background:var(--warning-bg); color:var(--warning); }
+.badge-danger { background:var(--danger-bg); color:var(--danger); }
+.badge-info { background:var(--info-bg); color:var(--info); }
+.badge-purple { background:var(--accent-glow); color:var(--accent-light); }
+
+/* Tabs */
+.tabs { display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+.tab {
+  padding:10px 16px; font-size:13px; font-weight:500;
+  color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent;
+  transition:var(--transition);
+}
+.tab:hover { color:var(--text-primary); }
+.tab.active { color:var(--accent-light); border-bottom-color:var(--accent); }
+
+/* Query Editor */
+.query-editor { position:relative; }
+.query-editor textarea {
+  min-height:160px; font-size:14px; line-height:1.6;
+  padding:16px; background:var(--bg-primary);
+}
+.query-results { margin-top:16px; }
+.query-metrics {
+  display:flex; gap:24px; padding:12px 16px;
+  background:var(--bg-tertiary); border-radius:var(--radius-sm);
+  margin-bottom:12px; font-size:12px; color:var(--text-secondary);
+}
+.query-metrics span { color:var(--text-primary); font-weight:600; }
+
+/* JSON Viewer */
+.json-view {
+  background:var(--bg-primary); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:16px;
+  font-family:'SF Mono',Monaco,Consolas,monospace; font-size:13px;
+  line-height:1.6; overflow-x:auto; white-space:pre-wrap;
+  max-height:400px; overflow-y:auto;
+}
+.json-key { color:#a29bfe; }
+.json-string { color:#55efc4; }
+.json-number { color:#fdcb6e; }
+.json-bool { color:#74b9ff; }
+.json-null { color:#636e72; }
+
+/* Empty state */
+.empty-state {
+  text-align:center; padding:60px 20px; color:var(--text-muted);
+}
+.empty-state svg { width:64px; height:64px; margin-bottom:16px; opacity:0.3; }
+.empty-state h3 { font-size:16px; margin-bottom:8px; color:var(--text-secondary); }
+.empty-state p { font-size:13px; margin-bottom:20px; }
+
+/* Section headers */
+.section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.section-header h2 { font-size:20px; font-weight:600; }
+
+/* Inline form */
+.inline-form { display:flex; gap:8px; align-items:flex-end; }
+.inline-form .form-group { margin-bottom:0; flex:1; }
+
+/* Toast */
+.toast-container { position:fixed; top:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  padding:12px 20px; border-radius:var(--radius-sm);
+  font-size:13px; font-weight:500; box-shadow:var(--shadow);
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+  max-width:360px;
+}
+.toast-success { background:var(--success); color:#fff; }
+.toast-error { background:var(--danger); color:#fff; }
+.toast-info { background:var(--info); color:#000; }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes fadeOut { to{opacity:0;transform:translateY(-10px)} }
+
+/* Page transitions */
+.page { display:none; }
+.page.active { display:block; animation:fadeIn 0.2s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* Doc browser toolbar */
+.doc-toolbar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:flex-end; }
+.doc-toolbar .form-group { margin-bottom:0; min-width:160px; }
+
+/* XDCR flow diagram */
+.xdcr-flow {
+  display:flex; align-items:center; gap:12px; padding:16px;
+  background:var(--bg-tertiary); border-radius:var(--radius-sm); margin-bottom:8px;
+}
+.xdcr-flow .flow-node {
+  padding:8px 16px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:13px; font-weight:500;
+}
+.xdcr-flow .flow-arrow { color:var(--accent-light); font-size:20px; }
+
+/* Partition visualization */
+.partition-bar-container { display:flex; height:40px; border-radius:var(--radius-sm); overflow:hidden; margin-bottom:8px; border:1px solid var(--border); }
+.partition-bar { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#fff; transition: width 0.5s ease; min-width:2px; }
+.partition-legend { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:12px; }
+.partition-legend-item { display:flex; align-items:center; gap:6px; }
+.partition-legend-dot { width:12px; height:12px; border-radius:3px; }
+.vb-heatmap { display:flex; flex-wrap:wrap; gap:1px; }
+.vb-cell { width:6px; height:6px; border-radius:1px; cursor:pointer; transition: transform 0.1s; }
+.vb-cell:hover { transform:scale(2.5); z-index:1; }
+.node-partition-card { padding:16px; }
+.node-partition-card h4 { font-size:14px; margin-bottom:8px; }
+.progress-bar { height:6px; background:var(--bg-primary); border-radius:3px; overflow:hidden; margin-top:4px; }
+.progress-fill { height:100%; border-radius:3px; transition: width 0.3s ease; }
+.rebalance-banner {
+  padding:16px 20px; border-radius:var(--radius);
+  display:flex; align-items:center; gap:16px;
+  border:1px solid;
+}
+.rebalance-banner.active { background:var(--info-bg); border-color:var(--info); }
+.rebalance-banner.complete { background:var(--success-bg); border-color:var(--success); }
+
+/* Bucket Tree */
+.bucket-card-clickable { cursor:pointer; transition:var(--transition); }
+.bucket-card-clickable:hover { border-color:var(--accent); transform:translateY(-2px); }
+.bucket-tree { margin-top:14px; border-top:1px solid var(--border); padding-top:14px; }
+.tree-scope { margin-bottom:6px; }
+.tree-scope-header {
+  display:flex; align-items:center; gap:8px; padding:7px 10px;
+  border-radius:var(--radius-sm); cursor:pointer; font-size:13px;
+  font-weight:600; color:var(--accent-light); transition:var(--transition);
+  user-select:none;
+}
+.tree-scope-header:hover { background:var(--bg-hover); }
+.tree-scope-header .chevron { transition:transform 0.2s; display:inline-block; font-size:10px; }
+.tree-scope-header.open .chevron { transform:rotate(90deg); }
+.tree-collections { padding-left:28px; display:none; }
+.tree-collections.open { display:block; }
+.tree-collection-item {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; padding:5px 10px; border-radius:var(--radius-sm);
+  cursor:pointer; font-size:12px; color:var(--text-secondary);
+  transition:var(--transition);
+}
+.tree-collection-item:hover { background:var(--bg-hover); color:var(--text-primary); }
+.tree-collection-item svg { width:12px; height:12px; flex-shrink:0; }
+.tree-collection-item .coll-name { display:flex; align-items:center; gap:6px; }
+.tree-collection-item .coll-browse { font-size:11px; color:var(--accent); opacity:0; transition:opacity 0.2s; }
+.tree-collection-item:hover .coll-browse { opacity:1; }
+.bucket-actions-bar { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">N</div>
+    <div>
+      <div class="logo-text">OxideDB</div>
+      <div class="logo-version">v0.4.0</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Data</div>
+      <div class="nav-item" onclick="showPage('buckets')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Buckets
+      </div>
+      <div class="nav-item" onclick="showPage('documents')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Documents
+      </div>
+      <div class="nav-item" onclick="showPage('query')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Query
+      </div>
+      <div class="nav-item" onclick="showPage('indexes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+        Indexes
+      </div>
+      <div class="nav-item" onclick="showPage('fts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Full-Text Search
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Streaming</div>
+      <div class="nav-item" onclick="showPage('dcp')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        DCP Streams
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Security</div>
+      <div class="nav-item" onclick="showPage('audit')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Audit Log
+      </div>
+      <div class="nav-item" onclick="showPage('rbac')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users &amp; Roles
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Operations</div>
+      <div class="nav-item" onclick="showPage('backup')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Backup / Restore
+      </div>
+      <div class="nav-item" onclick="showPage('transactions')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Transactions
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Replication</div>
+      <div class="nav-item" onclick="showPage('xdcr')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        XDCR
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Infrastructure</div>
+      <div class="nav-item" onclick="showPage('cluster')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Cluster
+      </div>
+      <div class="nav-item" onclick="showPage('failover')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Failover
+      </div>
+      <div class="nav-item" onclick="showPage('partitions')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M4.93 4.93l14.14 14.14"/><path d="M19.07 4.93L4.93 19.07"/></svg>
+        Partitions
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="status-dot green"></span> Server Running
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="page-title">Dashboard</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary btn-sm" onclick="refreshCurrentPage()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- Dashboard Page -->
+    <div class="page active" id="page-dashboard">
+      <div class="grid grid-4" id="dashboard-stats"></div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:16px; font-size:16px; color:var(--text-secondary)">Buckets Overview</h3>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Type</th><th>Documents</th><th>Size</th><th>vBuckets</th><th>Replicas</th></tr></thead>
+          <tbody id="dashboard-buckets"></tbody></table>
+        </div>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:16px; font-size:16px; color:var(--text-secondary)">Active XDCR Replications</h3>
+        <div class="table-wrap">
+          <table><thead><tr><th>ID</th><th>Source</th><th>Target</th><th>Status</th><th>Docs Replicated</th><th>Conflicts</th></tr></thead>
+          <tbody id="dashboard-xdcr"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buckets Page -->
+    <div class="page" id="page-buckets">
+      <div class="section-header">
+        <h2>Bucket Management</h2>
+        <button class="btn btn-primary" onclick="openModal('create-bucket-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Bucket
+        </button>
+      </div>
+      <div class="grid grid-3" id="bucket-list"></div>
+    </div>
+
+    <!-- Documents Page -->
+    <div class="page" id="page-documents">
+      <div class="section-header">
+        <h2>Document Browser</h2>
+        <button class="btn btn-primary" onclick="openModal('upsert-doc-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Document
+        </button>
+      </div>
+      <div class="doc-toolbar">
+        <div class="form-group"><label>Bucket</label><select id="doc-bucket" onchange="loadDocScopes()"></select></div>
+        <div class="form-group"><label>Scope</label><select id="doc-scope" onchange="loadDocCollections()"></select></div>
+        <div class="form-group"><label>Collection</label><select id="doc-collection" onchange="browseDocuments()"></select></div>
+        <div class="form-group"><label>Key Filter</label><input id="doc-key-search" placeholder="Prefix or exact key..." oninput="docFilterDebounce()"></div>
+        <button class="btn btn-secondary" onclick="getDocByKey()" style="height:38px">Exact Lookup</button>
+        <button class="btn btn-primary" onclick="browseDocuments()" style="height:38px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Browse
+        </button>
+      </div>
+
+      <!-- Documents stats bar -->
+      <div id="doc-stats-bar" style="display:none;margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--bg-tertiary); border-radius:var(--radius-sm); font-size:13px;">
+          <div id="doc-stats-text" style="color:var(--text-secondary)"></div>
+          <div id="doc-pagination" style="display:flex; gap:6px; align-items:center;"></div>
+        </div>
+      </div>
+
+      <!-- Documents table -->
+      <div id="doc-table-area" style="display:none">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Key</th>
+              <th>Preview</th>
+              <th>Size</th>
+              <th>CAS</th>
+              <th>vBucket</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody id="doc-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Single doc detail view -->
+      <div id="doc-result"></div>
+    </div>
+
+    <!-- Query Page -->
+    <div class="page" id="page-query">
+      <div class="section-header"><h2>Query Workbench</h2></div>
+      <div class="query-editor">
+        <textarea id="query-input" placeholder="SELECT * FROM `bucket-name` WHERE field = 'value' LIMIT 10">SELECT * FROM `travel-sample` WHERE type = 'airline' LIMIT 10</textarea>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-primary" onclick="executeQuery()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Execute
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('query-input').value=''">Clear</button>
+        <span style="font-size:12px; color:var(--text-muted); margin-left:auto;">Tip: Use backticks for bucket names with special characters</span>
+      </div>
+      <div class="query-results" id="query-results"></div>
+    </div>
+
+    <!-- Indexes Page -->
+    <div class="page" id="page-indexes">
+      <div class="section-header">
+        <h2>Secondary Indexes (GSI)</h2>
+        <button class="btn btn-primary" onclick="openModal('create-index-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Index
+        </button>
+      </div>
+      <div id="indexes-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Bucket</th><th>Fields</th><th>Type</th><th>State</th><th>Entries</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="indexes-table"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Quick Create via N1QL</h3>
+        <div class="card" style="padding:16px">
+          <div class="query-editor" style="margin-bottom:12px">
+            <textarea id="index-n1ql" style="min-height:60px; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:13px;" placeholder="CREATE INDEX idx_city ON `my-bucket`(city)">CREATE INDEX idx_example ON `bucket-name`(field1, field2)</textarea>
+          </div>
+          <button class="btn btn-primary" onclick="executeIndexN1ql()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Execute
+          </button>
+          <span id="index-n1ql-result" style="margin-left:12px; font-size:13px; color:var(--text-secondary)"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FTS Page -->
+    <div class="page" id="page-fts">
+      <div class="section-header">
+        <h2>Full-Text Search (FTS)</h2>
+        <button class="btn btn-primary" onclick="openModal('create-fts-index-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create FTS Index
+        </button>
+      </div>
+
+      <div id="fts-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Bucket</th><th>Fields</th><th>Analyzer</th><th>State</th><th>Docs</th><th>Terms</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="fts-indexes-table"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Search</h3>
+        <div class="card" style="padding:16px">
+          <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap; align-items:end">
+            <div style="flex:1; min-width:200px">
+              <label style="display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px">Index</label>
+              <select id="fts-search-index" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:13px">
+                <option value="">Select index...</option>
+              </select>
+            </div>
+            <div style="flex:2; min-width:300px">
+              <label style="display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px">Query</label>
+              <input type="text" id="fts-search-query" placeholder="Search text..." style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:13px">
+            </div>
+            <div style="min-width:120px">
+              <label style="display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px">Field</label>
+              <input type="text" id="fts-search-field" value="" placeholder="(all fields)" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:13px">
+            </div>
+            <div style="min-width:120px">
+              <label style="display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px">Query Type</label>
+              <select id="fts-search-type" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:13px">
+                <option value="match">Match</option>
+                <option value="match_phrase">Match Phrase</option>
+                <option value="term">Term</option>
+                <option value="prefix">Prefix</option>
+                <option value="wildcard">Wildcard</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); cursor:pointer; margin-bottom:4px">
+                <input type="checkbox" id="fts-search-highlight" checked> Highlight
+              </label>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="executeFtsSearch()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search
+          </button>
+          <span id="fts-search-status" style="margin-left:12px; font-size:13px; color:var(--text-secondary)"></span>
+        </div>
+      </div>
+
+      <div id="fts-results" style="margin-top:24px; display:none">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Results <span id="fts-result-count" style="font-weight:normal; color:var(--accent)"></span></h3>
+        <div id="fts-results-list"></div>
+      </div>
+    </div>
+
+    <!-- DCP Streams Page -->
+    <div class="page" id="page-dcp">
+      <div class="section-header">
+        <h2>DCP (Database Change Protocol) Streams</h2>
+        <button class="btn btn-primary" onclick="openModal('create-dcp-stream-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Stream
+        </button>
+      </div>
+      <div id="dcp-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Stream ID</th><th>Bucket</th><th>Scope</th><th>Collection</th><th>Status</th><th>Events</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="dcp-streams-table"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Backfill</h3>
+        <div class="card" style="padding:16px">
+          <div class="form-row" style="display:flex; gap:12px; align-items:flex-end">
+            <div class="form-group" style="flex:1"><label>Bucket</label><select id="dcp-backfill-bucket"></select></div>
+            <div class="form-group" style="flex:1"><label>Scope (optional)</label><input id="dcp-backfill-scope" placeholder="_default"></div>
+            <div class="form-group" style="flex:1"><label>Collection (optional)</label><input id="dcp-backfill-collection" placeholder="_default"></div>
+            <button class="btn btn-primary" onclick="dcpBackfill()" style="height:38px">Run Backfill</button>
+          </div>
+          <div id="dcp-backfill-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Live Event Monitor</h3>
+        <div class="card" style="padding:16px">
+          <div class="form-row" style="display:flex; gap:12px; align-items:flex-end; margin-bottom:12px">
+            <div class="form-group" style="flex:1"><label>Stream</label><select id="dcp-live-stream"></select></div>
+            <button class="btn btn-primary" id="dcp-sse-btn" onclick="toggleDcpSse()" style="height:38px">Start Listening</button>
+          </div>
+          <div id="dcp-live-events" style="max-height:400px; overflow-y:auto; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:12px; background:var(--bg-primary); border-radius:8px; padding:12px; border:1px solid var(--border-color)">
+            <div style="color:var(--text-muted)">Select a stream and click "Start Listening" to receive real-time events...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Log Page -->
+    <div class="page" id="page-audit">
+      <div class="section-header">
+        <h2>Audit Log</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="clearAuditEvents()">Clear All</button>
+          <button class="btn btn-primary" onclick="loadAuditEvents()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div id="audit-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+      <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px">
+        <div class="form-group" style="flex:1"><label>Filter by Bucket</label><input id="audit-filter-bucket" placeholder="Leave empty for all"></div>
+        <div class="form-group" style="width:120px"><label>Limit</label><input id="audit-filter-limit" value="100" type="number"></div>
+        <button class="btn btn-secondary" onclick="loadAuditEvents()" style="height:38px">Filter</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Timestamp</th><th>Event Type</th><th>Description</th><th>User</th><th>Bucket</th></tr></thead>
+          <tbody id="audit-events-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RBAC / Users & Roles Page -->
+    <div class="page" id="page-rbac">
+      <div class="section-header">
+        <h2>Users &amp; Roles (RBAC)</h2>
+        <button class="btn btn-primary" onclick="openModal('create-user-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create User
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Username</th><th>Display Name</th><th>Roles</th><th>Built-in</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="rbac-users-table"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="margin-bottom:12px">Available Roles</h3>
+        <div id="rbac-roles-list" class="grid grid-3"></div>
+      </div>
+    </div>
+
+    <!-- Backup / Restore Page -->
+    <div class="page" id="page-backup">
+      <div class="section-header">
+        <h2>Backup / Restore</h2>
+        <button class="btn btn-primary" onclick="createBackup()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Create Backup
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Timestamp</th><th>Buckets</th><th>Documents</th><th>Actions</th></tr></thead>
+          <tbody id="backups-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Transactions Page -->
+    <div class="page" id="page-transactions">
+      <div class="section-header">
+        <h2>Multi-Document Transactions</h2>
+        <button class="btn btn-primary" onclick="beginTransaction()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Begin Transaction
+        </button>
+      </div>
+      <div id="txn-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Transaction ID</th><th>State</th><th>Started</th><th>Expires</th><th>Mutations</th><th>Reads</th><th>Actions</th></tr></thead>
+          <tbody id="transactions-table"></tbody>
+        </table>
+      </div>
+
+      <!-- Inline Transaction Workbench -->
+      <div id="txn-workbench" style="display:none;margin-top:24px;padding:20px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+        <h3 style="margin-bottom:12px">Transaction Workbench — <code id="txn-workbench-id"></code></h3>
+        <div class="grid grid-2" style="gap:12px;margin-bottom:12px">
+          <div>
+            <label>Bucket</label>
+            <input id="txn-bucket" class="form-input" value="default" />
+          </div>
+          <div>
+            <label>Key</label>
+            <input id="txn-key" class="form-input" placeholder="document key" />
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label>Value (JSON)</label>
+          <textarea id="txn-value" class="form-input" rows="3" placeholder='{"field": "value"}'></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="txnGet()">GET</button>
+          <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="txnInsert()">INSERT</button>
+          <button class="btn btn-sm" style="background:var(--warning);color:#fff" onclick="txnReplace()">REPLACE</button>
+          <button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="txnRemove()">REMOVE</button>
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="txnCommit()">COMMIT</button>
+            <button class="btn" style="background:var(--danger);color:#fff" onclick="txnRollback()">ROLLBACK</button>
+          </span>
+        </div>
+        <div id="txn-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- XDCR Page -->
+    <div class="page" id="page-xdcr">
+      <div class="tabs">
+        <div class="tab active" onclick="showXdcrTab('replications')">Replications</div>
+        <div class="tab" onclick="showXdcrTab('clusters')">Remote Clusters</div>
+      </div>
+      <div id="xdcr-tab-replications">
+        <div class="section-header">
+          <h2>XDCR Replications</h2>
+          <button class="btn btn-primary" onclick="openModal('create-replication-modal')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Replication
+          </button>
+        </div>
+        <div id="xdcr-replications-list"></div>
+      </div>
+      <div id="xdcr-tab-clusters" style="display:none">
+        <div class="section-header">
+          <h2>Remote Clusters</h2>
+          <button class="btn btn-primary" onclick="openModal('add-cluster-modal')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Cluster
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Hostname</th><th>Port</th><th>Secure</th><th>Added</th><th>Actions</th></tr></thead>
+          <tbody id="remote-clusters-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cluster Page -->
+    <div class="page" id="page-cluster">
+      <div class="section-header">
+        <h2>Cluster Overview</h2>
+        <button class="btn btn-primary" onclick="openModal('add-node-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Node
+        </button>
+      </div>
+      <div id="cluster-info-cards" class="grid grid-4" style="margin-bottom:24px"></div>
+      <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Nodes</h3>
+      <div class="table-wrap">
+        <table><thead><tr><th>Name</th><th>Hostname</th><th>Port</th><th>Status</th><th>Services</th><th>Active vBuckets</th><th>Last Heartbeat</th><th>Actions</th></tr></thead>
+        <tbody id="cluster-nodes-table"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Failover Page -->
+    <div class="page" id="page-failover">
+      <div class="section-header">
+        <h2>Automatic Failover</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="resetFailoverQuota()">Reset Quota</button>
+          <button class="btn btn-primary" onclick="openModal('failover-config-modal')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configure
+          </button>
+        </div>
+      </div>
+
+      <!-- Failover Status Cards -->
+      <div id="failover-status-cards" class="grid grid-4" style="margin-bottom:24px"></div>
+
+      <!-- Failover Config Summary -->
+      <div id="failover-config-summary" class="card" style="margin-bottom:24px"></div>
+
+      <!-- Nodes with Failover Actions -->
+      <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Node Failover Actions</h3>
+      <div class="table-wrap" style="margin-bottom:24px">
+        <table>
+          <thead><tr><th>Node</th><th>Status</th><th>Last Heartbeat</th><th>Failure Timer</th><th>Actions</th></tr></thead>
+          <tbody id="failover-nodes-table"></tbody>
+        </table>
+      </div>
+
+      <!-- Failover Event History -->
+      <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Failover Event History</h3>
+      <div id="failover-events"></div>
+    </div>
+
+    <!-- Partitions Page -->
+    <div class="page" id="page-partitions">
+      <div class="section-header">
+        <h2>Data Partitioning</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="triggerRebalance()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Rebalance
+          </button>
+        </div>
+      </div>
+
+      <!-- Partition Stats -->
+      <div id="partition-stats" class="grid grid-4" style="margin-bottom:24px"></div>
+
+      <!-- Rebalance Status -->
+      <div id="rebalance-banner" style="display:none; margin-bottom:20px"></div>
+
+      <!-- Node Partition Distribution -->
+      <h3 style="margin-bottom:16px; font-size:16px; color:var(--text-secondary)">vBucket Distribution</h3>
+      <div id="partition-distribution" style="margin-bottom:24px"></div>
+
+      <!-- Visual Partition Map -->
+      <h3 style="margin-bottom:16px; font-size:16px; color:var(--text-secondary)">Partition Map Heatmap</h3>
+      <div id="partition-heatmap" class="card" style="padding:16px; overflow-x:auto; margin-bottom:24px"></div>
+
+      <!-- Pending Transfers -->
+      <div id="partition-transfers" style="display:none; margin-bottom:24px">
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary)">Pending Transfers</h3>
+        <div class="table-wrap">
+          <table><thead><tr><th>vBucket</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+          <tbody id="transfers-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Modal: Create Bucket -->
+<div class="modal-overlay" id="create-bucket-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create Bucket</h2><button class="modal-close" onclick="closeModal('create-bucket-modal')">&times;</button></div>
+    <div class="form-group"><label>Bucket Name</label><input id="cb-name" placeholder="my-bucket"></div>
+    <div class="form-group"><label>Bucket Type</label>
+      <select id="cb-type"><option value="couchbase">Couchbase</option><option value="ephemeral">Ephemeral</option><option value="memcached">Memcached</option></select>
+    </div>
+    <div class="form-group"><label>RAM Quota (MB)</label><input id="cb-ram" type="number" value="256"></div>
+    <div class="form-group"><label>Replicas</label>
+      <select id="cb-replicas"><option value="0">0</option><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select>
+    </div>
+    <div class="form-group"><label>Conflict Resolution</label>
+      <select id="cb-conflict"><option value="seqno">Sequence Number</option><option value="timestamp">Timestamp (LWW)</option></select>
+    </div>
+    <div class="form-group"><label style="display:flex;align-items:center;gap:8px;text-transform:none"><input type="checkbox" id="cb-flush" style="width:auto"> Enable Flush</label></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-bucket-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createBucket()">Create Bucket</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Upsert Document -->
+<div class="modal-overlay" id="upsert-doc-modal">
+  <div class="modal" style="width:640px">
+    <div class="modal-header"><h2>Create / Update Document</h2><button class="modal-close" onclick="closeModal('upsert-doc-modal')">&times;</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div class="form-group"><label>Bucket</label><select id="ud-bucket"></select></div>
+      <div class="form-group"><label>Scope</label><input id="ud-scope" value="_default"></div>
+      <div class="form-group"><label>Collection</label><input id="ud-collection" value="_default"></div>
+    </div>
+    <div class="form-group"><label>Document Key</label><input id="ud-key" placeholder="document-key-123"></div>
+    <div class="form-group"><label>JSON Value</label><textarea id="ud-value" style="min-height:200px" placeholder='{"field": "value"}'>{
+  "type": "example",
+  "name": "My Document"
+}</textarea></div>
+    <div class="form-group"><label>TTL (seconds, optional)</label><input id="ud-expiry" type="number" placeholder="0 = no expiry"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('upsert-doc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="upsertDocument()">Save Document</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Remote Cluster -->
+<div class="modal-overlay" id="add-cluster-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Add Remote Cluster</h2><button class="modal-close" onclick="closeModal('add-cluster-modal')">&times;</button></div>
+    <div class="form-group"><label>Cluster Name</label><input id="rc-name" placeholder="dc-west"></div>
+    <div class="form-group"><label>Hostname</label><input id="rc-hostname" placeholder="192.168.1.100"></div>
+    <div class="form-group"><label>Port</label><input id="rc-port" type="number" value="8091"></div>
+    <div class="form-group"><label style="display:flex;align-items:center;gap:8px;text-transform:none"><input type="checkbox" id="rc-secure" style="width:auto"> Use TLS</label></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-cluster-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addRemoteCluster()">Add Cluster</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create Replication -->
+<div class="modal-overlay" id="create-replication-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create XDCR Replication</h2><button class="modal-close" onclick="closeModal('create-replication-modal')">&times;</button></div>
+    <div class="form-group"><label>Source Bucket</label><select id="xr-source"></select></div>
+    <div class="form-group"><label>Target Cluster</label><select id="xr-cluster"></select></div>
+    <div class="form-group"><label>Target Bucket</label><input id="xr-target" placeholder="target-bucket-name"></div>
+    <div class="form-group"><label>Conflict Resolution</label>
+      <select id="xr-conflict"><option value="seqno">Sequence Number</option><option value="timestamp">Timestamp (LWW)</option></select>
+    </div>
+    <div class="form-group"><label>Filter Expression (optional)</label><input id="xr-filter" placeholder="key:prefix or field=value"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-replication-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createReplication()">Create Replication</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Node -->
+<div class="modal-overlay" id="add-node-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Add Node to Cluster</h2><button class="modal-close" onclick="closeModal('add-node-modal')">&times;</button></div>
+    <div class="form-group"><label>Node Name</label><input id="an-name" placeholder="node-2"></div>
+    <div class="form-group"><label>Hostname</label><input id="an-hostname" placeholder="192.168.1.101"></div>
+    <div class="form-group"><label>Port</label><input id="an-port" type="number" value="8091"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-node-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addNode()">Add Node</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: View Document -->
+<div class="modal-overlay" id="view-doc-modal">
+  <div class="modal" style="width:700px">
+    <div class="modal-header"><h2 id="view-doc-title">Document</h2><button class="modal-close" onclick="closeModal('view-doc-modal')">&times;</button></div>
+    <div id="view-doc-content"></div>
+  </div>
+</div>
+
+<!-- Modal: Failover Configuration -->
+<div class="modal-overlay" id="failover-config-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Failover Configuration</h2><button class="modal-close" onclick="closeModal('failover-config-modal')">&times;</button></div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none">
+        <input type="checkbox" id="fo-enabled" style="width:auto" checked> Enable Auto-Failover
+      </label>
+    </div>
+    <div class="form-group"><label>Failover Timeout (seconds)</label><input id="fo-timeout" type="number" value="120" min="5"></div>
+    <div class="form-group"><label>Max Sequential Auto-Failovers</label><input id="fo-max-count" type="number" value="3" min="1"></div>
+    <div class="form-group"><label>Cooldown Between Failovers (seconds)</label><input id="fo-cooldown" type="number" value="30" min="5"></div>
+    <div class="form-group"><label>Minimum Cluster Size</label><input id="fo-min-cluster" type="number" value="2" min="1"></div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none">
+        <input type="checkbox" id="fo-data-loss" style="width:auto"> Allow failover with potential data loss (no replicas)
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('failover-config-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFailoverConfig()">Save Configuration</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create Index -->
+<div class="modal-overlay" id="create-index-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create Secondary Index</h2><button class="modal-close" onclick="closeModal('create-index-modal')">&times;</button></div>
+    <div class="form-group"><label>Index Name</label><input id="ci-name" placeholder="idx_city_age"></div>
+    <div class="form-group"><label>Bucket</label><select id="ci-bucket"></select></div>
+    <div class="form-group"><label>Fields (comma-separated)</label><input id="ci-fields" placeholder="city, age, user.name"></div>
+    <div class="form-group"><label>WHERE Condition (optional, partial index)</label><input id="ci-condition" placeholder="type = 'airline'"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-index-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createIndex()">Create Index</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create FTS Index -->
+<div class="modal-overlay" id="create-fts-index-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create FTS Index</h2><button class="modal-close" onclick="closeModal('create-fts-index-modal')">&times;</button></div>
+    <div class="form-group"><label>Index Name</label><input id="fts-ci-name" placeholder="fts_articles"></div>
+    <div class="form-group"><label>Bucket</label><select id="fts-ci-bucket"></select></div>
+    <div class="form-group"><label>Fields (comma-separated, empty=all string fields)</label><input id="fts-ci-fields" placeholder="title, body, description"></div>
+    <div class="form-group"><label>Tokenizer</label>
+      <select id="fts-ci-tokenizer">
+        <option value="standard">Standard</option>
+        <option value="whitespace">Whitespace</option>
+        <option value="simple">Simple (letters only)</option>
+        <option value="keyword">Keyword (no tokenization)</option>
+      </select>
+    </div>
+    <div class="form-group" style="display:flex; gap:16px">
+      <label style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="fts-ci-lowercase" checked> Lowercase</label>
+      <label style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="fts-ci-stopwords"> Remove Stop Words</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-fts-index-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createFtsIndex()">Create FTS Index</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="create-dcp-stream-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create DCP Stream</h2><button class="modal-close" onclick="closeModal('create-dcp-stream-modal')">&times;</button></div>
+    <div class="form-group"><label>Stream Name</label><input id="dcp-cs-name" placeholder="my-stream"></div>
+    <div class="form-group"><label>Bucket</label><select id="dcp-cs-bucket"></select></div>
+    <div class="form-group"><label>Scope Filter (optional)</label><input id="dcp-cs-scope" placeholder="Leave empty for all scopes"></div>
+    <div class="form-group"><label>Collection Filter (optional)</label><input id="dcp-cs-collection" placeholder="Leave empty for all collections"></div>
+    <div class="form-group">
+      <label style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="dcp-cs-backfill" checked> Include Backfill (existing documents)</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-dcp-stream-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createDcpStream()">Create Stream</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create User -->
+<div class="modal-overlay" id="create-user-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>Create User</h2><button class="modal-close" onclick="closeModal('create-user-modal')">&times;</button></div>
+    <div class="form-group"><label>Username</label><input id="rbac-cu-username" placeholder="john_doe"></div>
+    <div class="form-group"><label>Password</label><input id="rbac-cu-password" type="password" placeholder="••••••••"></div>
+    <div class="form-group"><label>Display Name</label><input id="rbac-cu-display" placeholder="John Doe"></div>
+    <div class="form-group"><label>Role</label>
+      <select id="rbac-cu-role">
+        <option value="Admin">Admin</option>
+        <option value="BucketFullAccess">Bucket Full Access</option>
+        <option value="DataReader">Data Reader</option>
+        <option value="DataWriter">Data Writer</option>
+        <option value="DataReadWrite" selected>Data Read/Write</option>
+        <option value="QuerySelect">Query Select</option>
+        <option value="QueryManage">Query Manage</option>
+        <option value="FtsSearcher">FTS Searcher</option>
+        <option value="FtsAdmin">FTS Admin</option>
+        <option value="ClusterAdmin">Cluster Admin</option>
+        <option value="ClusterMonitor">Cluster Monitor</option>
+        <option value="XdcrAdmin">XDCR Admin</option>
+        <option value="BackupAdmin">Backup Admin</option>
+        <option value="ReadOnlyAdmin">Read-Only Admin</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Bucket (for scoped roles, optional)</label><input id="rbac-cu-bucket" placeholder="Leave empty for all buckets"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('create-user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+
+// ---- Navigation ----
+let currentPage = 'dashboard';
+const pageTitles = { dashboard:'Dashboard', buckets:'Buckets', documents:'Documents', query:'Query Workbench', indexes:'Indexes', fts:'Full-Text Search', dcp:'DCP Streams', audit:'Audit Log', rbac:'Users & Roles', backup:'Backup / Restore', transactions:'Transactions', xdcr:'XDCR Replication', cluster:'Cluster', failover:'Auto-Failover', partitions:'Data Partitioning' };
+
+function showPage(page) {
+  if (!document.getElementById('page-' + page)) return;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  // Activate matching nav item
+  document.querySelectorAll('.nav-item').forEach(n => {
+    const oc = n.getAttribute('onclick') || '';
+    if (oc === "showPage('" + page + "')") n.classList.add('active');
+  });
+  currentPage = page;
+  if (location.hash !== '#' + page) location.hash = page;
+  document.getElementById('page-title').textContent = pageTitles[page] || page;
+  refreshCurrentPage();
+}
+
+// Hash-based navigation: restore page on refresh / back-forward
+window.addEventListener('hashchange', () => {
+  const hash = location.hash.replace('#', '');
+  if (hash && hash !== currentPage && document.getElementById('page-' + hash)) {
+    showPage(hash);
+  }
+});
+function refreshCurrentPage() {
+  const loaders = { dashboard:loadDashboard, buckets:loadBuckets, documents:loadDocumentsPage, query:()=>{}, indexes:loadIndexes, fts:loadFts, dcp:loadDcpStreams, audit:loadAuditEvents, rbac:loadRbac, backup:loadBackups, transactions:loadTransactions, xdcr:loadXdcr, cluster:loadCluster, failover:loadFailover, partitions:loadPartitions };
+  (loaders[currentPage] || (()=>{}))();
+}
+
+// ---- Toast ----
+function toast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ---- Modal ----
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ---- API helpers ----
+async function api(path, opts={}) {
+  const res = await fetch(API + path, {
+    headers: {'Content-Type':'application/json', ...opts.headers},
+    ...opts
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({error:'Request failed'}));
+    throw new Error(err.error || 'Request failed');
+  }
+  return res.json();
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024, sizes = ['B','KB','MB','GB','TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatJSON(obj) {
+  return JSON.stringify(obj, null, 2)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
+    .replace(/: (true|false)/g, ': <span class="json-bool">$1</span>')
+    .replace(/: (null)/g, ': <span class="json-null">$1</span>');
+}
+
+function statusBadge(status) {
+  const s = status.toLowerCase();
+  if (s.includes('running') || s === 'healthy') return `<span class="badge badge-success">${status}</span>`;
+  if (s.includes('paused') || s.includes('warmup') || s.includes('initializing')) return `<span class="badge badge-warning">${status}</span>`;
+  if (s === 'failedover') return `<span class="badge badge-danger">&#9888; Failed Over</span>`;
+  if (s.includes('error') || s.includes('failed') || s.includes('unhealthy')) return `<span class="badge badge-danger">${status}</span>`;
+  return `<span class="badge badge-info">${status}</span>`;
+}
+
+function timeAgo(ts) {
+  if (!ts) return 'Never';
+  const d = new Date(ts);
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 5) return 'Just now';
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return d.toLocaleDateString();
+}
+
+// ---- Dashboard ----
+async function loadDashboard() {
+  try {
+    const [buckets, cluster, replications] = await Promise.all([
+      api('/api/v1/buckets'),
+      api('/api/v1/cluster'),
+      api('/api/v1/xdcr/replications')
+    ]);
+    const totalDocs = buckets.reduce((s,b) => s + b.document_count, 0);
+    const totalSize = buckets.reduce((s,b) => s + b.size_bytes, 0);
+
+    document.getElementById('dashboard-stats').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#128230;</div>
+        <div class="stat-value">${buckets.length}</div>
+        <div class="stat-label">Buckets</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128196;</div>
+        <div class="stat-value">${totalDocs.toLocaleString()}</div>
+        <div class="stat-label">Total Documents</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#128193;</div>
+        <div class="stat-value">${formatBytes(totalSize)}</div>
+        <div class="stat-label">Data Size</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#128260;</div>
+        <div class="stat-value">${replications.length}</div>
+        <div class="stat-label">XDCR Replications</div>
+      </div>
+    `;
+
+    document.getElementById('dashboard-buckets').innerHTML = buckets.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No buckets yet</td></tr>'
+      : buckets.map(b => `<tr>
+        <td><strong>${b.name}</strong></td>
+        <td><span class="badge badge-purple">${b.bucket_type}</span></td>
+        <td>${b.document_count.toLocaleString()}</td>
+        <td>${formatBytes(b.size_bytes)}</td>
+        <td>${b.num_vbuckets}</td>
+        <td>${b.num_replicas}</td>
+      </tr>`).join('');
+
+    document.getElementById('dashboard-xdcr').innerHTML = replications.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No active replications</td></tr>'
+      : replications.map(r => `<tr>
+        <td style="font-size:12px;font-family:monospace">${r.id}</td>
+        <td>${r.source_bucket}</td>
+        <td>${r.target_cluster}/${r.target_bucket}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${r.docs_replicated.toLocaleString()}</td>
+        <td>${r.total_conflicts.toLocaleString()}</td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Buckets ----
+async function loadBuckets() {
+  try {
+    const buckets = await api('/api/v1/buckets');
+    if (buckets.length === 0) {
+      document.getElementById('bucket-list').innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <h3>No Buckets</h3><p>Create your first bucket to get started</p>
+        <button class="btn btn-primary" onclick="openModal('create-bucket-modal')">Create Bucket</button></div>`;
+      return;
+    }
+    document.getElementById('bucket-list').innerHTML = buckets.map(b => {
+      const bn = escKey(b.name);
+      return `
+      <div class="card" id="bucket-card-${b.name}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+          <div style="cursor:pointer;flex:1" onclick="toggleBucketTree('${bn}')">
+            <h3 style="font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              ${b.name}
+            </h3>
+            <span class="badge badge-purple" style="font-size:10px">${b.bucket_type}</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:8px">${b.document_count.toLocaleString()} docs • ${formatBytes(b.size_bytes)}</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();navigateToBucketDocs('${bn}','_default','_default')" title="Browse Documents">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Docs
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteBucket('${bn}')">Delete</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:13px">
+          <div><span style="color:var(--text-muted)">Documents</span><br><strong>${b.document_count.toLocaleString()}</strong></div>
+          <div><span style="color:var(--text-muted)">Size</span><br><strong>${formatBytes(b.size_bytes)}</strong></div>
+          <div><span style="color:var(--text-muted)">vBuckets</span><br><strong>${b.num_vbuckets}</strong></div>
+          <div><span style="color:var(--text-muted)">RAM Quota</span><br><strong>${b.ram_quota_mb} MB</strong></div>
+        </div>
+        <div class="bucket-tree" id="bucket-tree-${b.name}" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:600">Scopes & Collections</div>
+            <div class="bucket-actions-bar">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();promptCreateScope('${bn}')">+ Scope</button>
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();promptCreateCollection('${bn}')">+ Collection</button>
+            </div>
+          </div>
+          ${b.scopes.map(s => `
+            <div class="tree-scope">
+              <div class="tree-scope-header" onclick="toggleScopeTree(this)">
+                <span class="chevron">&#9654;</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                ${s.name}
+                <span style="font-size:11px;color:var(--text-muted);font-weight:400">(${s.collections.length} collection${s.collections.length !== 1 ? 's' : ''})</span>
+              </div>
+              <div class="tree-collections">
+                ${s.collections.map(c => `
+                  <div class="tree-collection-item" onclick="navigateToBucketDocs('${bn}','${escKey(s.name)}','${escKey(c)}')">
+                    <div class="coll-name">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                      ${c}
+                    </div>
+                    <span class="coll-browse">Browse &rarr;</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function toggleBucketTree(bucketName) {
+  const tree = document.getElementById('bucket-tree-' + bucketName);
+  if (!tree) return;
+  const isVisible = tree.style.display !== 'none';
+  tree.style.display = isVisible ? 'none' : 'block';
+}
+
+function toggleScopeTree(el) {
+  el.classList.toggle('open');
+  const colls = el.nextElementSibling;
+  if (colls) colls.classList.toggle('open');
+}
+
+function navigateToBucketDocs(bucket, scope, collection) {
+  showPage('documents');
+  setTimeout(() => {
+    const bucketSel = document.getElementById('doc-bucket');
+    if (bucketSel) {
+      bucketSel.value = bucket;
+      loadDocScopes().then(() => {
+        const scopeSel = document.getElementById('doc-scope');
+        if (scopeSel) scopeSel.value = scope;
+        loadDocCollections().then(() => {
+          const collSel = document.getElementById('doc-collection');
+          if (collSel) collSel.value = collection;
+          browseDocuments();
+        });
+      });
+    }
+  }, 100);
+}
+
+async function createBucket() {
+  try {
+    await api('/api/v1/buckets', { method:'POST', body:JSON.stringify({
+      name: document.getElementById('cb-name').value,
+      bucket_type: document.getElementById('cb-type').value,
+      ram_quota_mb: parseInt(document.getElementById('cb-ram').value),
+      num_replicas: parseInt(document.getElementById('cb-replicas').value),
+      conflict_resolution: document.getElementById('cb-conflict').value,
+      flush_enabled: document.getElementById('cb-flush').checked
+    })});
+    closeModal('create-bucket-modal');
+    toast('Bucket created successfully');
+    loadBuckets();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteBucket(name) {
+  if (!confirm(`Delete bucket "${name}"? This cannot be undone.`)) return;
+  try {
+    await api('/api/v1/buckets/' + name, {method:'DELETE'});
+    toast('Bucket deleted');
+    loadBuckets();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function promptCreateScope(bucket) {
+  const name = prompt('Enter scope name:');
+  if (!name) return;
+  try {
+    await api(`/api/v1/buckets/${bucket}/scopes`, {method:'POST', body:JSON.stringify({name})});
+    toast('Scope created');
+    loadBuckets();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function promptCreateCollection(bucket) {
+  const scope = prompt('Enter scope name:', '_default');
+  if (!scope) return;
+  const name = prompt('Enter collection name:');
+  if (!name) return;
+  try {
+    await api(`/api/v1/buckets/${bucket}/scopes/${scope}/collections`, {method:'POST', body:JSON.stringify({name})});
+    toast('Collection created');
+    loadBuckets();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Documents ----
+let docCurrentOffset = 0;
+let docPageSize = 25;
+let docFilterTimer = null;
+
+async function loadDocumentsPage() {
+  try {
+    const buckets = await api('/api/v1/buckets');
+    const sel = document.getElementById('doc-bucket');
+    sel.innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    if (buckets.length > 0) {
+      await loadDocScopes();
+      browseDocuments();
+    }
+    document.getElementById('ud-bucket').innerHTML = sel.innerHTML;
+  } catch(e) {}
+}
+
+async function loadDocScopes() {
+  const bucket = document.getElementById('doc-bucket').value;
+  if (!bucket) return;
+  try {
+    const scopes = await api(`/api/v1/buckets/${bucket}/scopes`);
+    document.getElementById('doc-scope').innerHTML = scopes.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    await loadDocCollections();
+  } catch(e) {}
+}
+
+async function loadDocCollections() {
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  try {
+    const scopes = await api(`/api/v1/buckets/${bucket}/scopes`);
+    const s = scopes.find(x => x.name === scope);
+    if (s) {
+      document.getElementById('doc-collection').innerHTML = s.collections.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+  } catch(e) {}
+}
+
+function docFilterDebounce() {
+  clearTimeout(docFilterTimer);
+  docFilterTimer = setTimeout(() => { docCurrentOffset = 0; browseDocuments(); }, 300);
+}
+
+async function browseDocuments() {
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  const collection = document.getElementById('doc-collection').value;
+  if (!bucket || !scope || !collection) return;
+
+  const prefix = document.getElementById('doc-key-search').value.trim();
+
+  // Hide single doc view, show table
+  document.getElementById('doc-result').innerHTML = '';
+  document.getElementById('doc-table-area').style.display = 'block';
+  document.getElementById('doc-stats-bar').style.display = 'block';
+
+  try {
+    let url = `/api/v1/docs/${encodeURIComponent(bucket)}/scopes/${encodeURIComponent(scope)}/collections/${encodeURIComponent(collection)}/docs?limit=${docPageSize}&offset=${docCurrentOffset}`;
+    if (prefix) url += `&prefix=${encodeURIComponent(prefix)}`;
+
+    const data = await api(url);
+
+    // Stats bar
+    const from = data.total === 0 ? 0 : data.offset + 1;
+    const to = Math.min(data.offset + data.limit, data.total);
+    document.getElementById('doc-stats-text').innerHTML =
+      `Showing <strong>${from}-${to}</strong> of <strong>${data.total}</strong> documents` +
+      (prefix ? ` (filter: <code>${prefix}*</code>)` : '');
+
+    // Pagination buttons
+    const pageNum = Math.floor(data.offset / data.limit) + 1;
+    const totalPages = Math.ceil(data.total / data.limit);
+    document.getElementById('doc-pagination').innerHTML = `
+      <button class="btn btn-secondary btn-sm" ${data.offset === 0 ? 'disabled style="opacity:0.4"' : ''} onclick="docGoPage(0)">&#171;</button>
+      <button class="btn btn-secondary btn-sm" ${data.offset === 0 ? 'disabled style="opacity:0.4"' : ''} onclick="docGoPage(${data.offset - data.limit})">&#8249; Prev</button>
+      <span style="font-size:12px;color:var(--text-secondary);padding:0 8px">Page ${pageNum} / ${totalPages || 1}</span>
+      <button class="btn btn-secondary btn-sm" ${!data.has_more ? 'disabled style="opacity:0.4"' : ''} onclick="docGoPage(${data.offset + data.limit})">Next &#8250;</button>
+      <button class="btn btn-secondary btn-sm" ${!data.has_more ? 'disabled style="opacity:0.4"' : ''} onclick="docGoPage(${(totalPages-1)*data.limit})">&#187;</button>
+      <select style="width:auto;padding:4px 8px;font-size:12px;margin-left:8px" onchange="docPageSize=parseInt(this.value);docCurrentOffset=0;browseDocuments()">
+        ${[10,25,50,100].map(n => `<option value="${n}" ${n===docPageSize?'selected':''}>${n}/page</option>`).join('')}
+      </select>
+    `;
+
+    // Table body
+    if (data.documents.length === 0) {
+      document.getElementById('doc-table-body').innerHTML =
+        `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">
+          ${prefix ? 'No documents match this filter' : 'No documents in this collection'}
+        </td></tr>`;
+      return;
+    }
+
+    // Store document keys in a map to avoid HTML-escaping issues in onclick handlers
+    window._docKeys = {};
+    document.getElementById('doc-table-body').innerHTML = data.documents.map((doc, idx) => {
+      window._docKeys[idx] = doc.key;
+      const preview = typeof doc.value_preview === 'object'
+        ? Object.entries(doc.value_preview).slice(0, 4).map(([k,v]) =>
+            `<span style="color:var(--accent-light)">${k}</span>: <span style="color:var(--text-secondary)">${typeof v === 'string' ? '"'+v+'"' : v}</span>`
+          ).join(', ')
+        : String(doc.value_preview);
+      return `<tr style="cursor:pointer" ondblclick="viewDocByIdx(${idx})">
+        <td><strong style="color:var(--accent-light);font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px">${doc.key}</strong></td>
+        <td style="font-size:12px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${preview}</td>
+        <td style="font-size:12px">${formatBytes(doc.size_bytes)}</td>
+        <td style="font-size:11px;font-family:monospace;color:var(--text-muted)">${doc.cas}</td>
+        <td style="font-size:12px;text-align:center">${doc.vbucket_id}</td>
+        <td style="font-size:12px">${new Date(doc.updated_at).toLocaleString()}</td>
+        <td>
+          <div style="display:flex;gap:3px">
+            <button class="btn btn-secondary btn-sm" onclick="viewDocByIdx(${idx})" title="View">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="editDocByIdx(${idx})" title="Edit">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteDocByIdx(${idx})" title="Delete">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function docGoPage(offset) {
+  docCurrentOffset = Math.max(0, offset);
+  browseDocuments();
+}
+
+// Bridge functions that look up the real key from the index map (avoids HTML-escaping issues)
+function viewDocByIdx(idx) { const key = window._docKeys[idx]; if (key) viewDocDetail(key); }
+function editDocByIdx(idx) { const key = window._docKeys[idx]; if (key) editDocument(key); }
+function deleteDocByIdx(idx) { const key = window._docKeys[idx]; if (key) deleteDocAndRefresh(key); }
+
+async function viewDocDetail(key) {
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  const collection = document.getElementById('doc-collection').value;
+  try {
+    const doc = await api(docApiPath(bucket, scope, collection, key));
+    showDocResult(doc);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function getDocByKey() {
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  const collection = document.getElementById('doc-collection').value;
+  const key = document.getElementById('doc-key-search').value.trim();
+  if (!key) { toast('Enter a document key', 'error'); return; }
+  try {
+    const doc = await api(docApiPath(bucket, scope, collection, key));
+    document.getElementById('doc-table-area').style.display = 'none';
+    document.getElementById('doc-stats-bar').style.display = 'none';
+    showDocResult(doc);
+  } catch(e) { toast(e.message, 'error'); document.getElementById('doc-result').innerHTML = ''; }
+}
+
+function showDocResult(doc) {
+  // Store the currently viewed document key to avoid escaping issues in onclick handlers
+  window._viewedDocKey = doc.key;
+  document.getElementById('doc-result').innerHTML = `
+    <div class="card" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div>
+          <h3 style="font-size:16px">${doc.key.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h3>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+            CAS: ${doc.cas} &bull; Rev: ${doc.rev_id} &bull; Seq: ${doc.seq_no} &bull; vBucket: ${doc.vbucket_id}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('doc-result').innerHTML='';browseDocuments()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Back to List
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="editDocument(window._viewedDocKey)">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDocAndRefresh(window._viewedDocKey)">Delete</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;font-size:12px;margin-bottom:16px">
+        <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Created</span><br>${new Date(doc.created_at).toLocaleString()}
+        </div>
+        <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Updated</span><br>${new Date(doc.updated_at).toLocaleString()}
+        </div>
+        <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Expiry</span><br>${doc.expiry || 'None'}
+        </div>
+        <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Flags</span><br>${doc.flags}
+        </div>
+        <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Served By</span><br>${doc.served_by || 'local'}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">Document Value</div>
+      <div class="json-view">${formatJSON(doc.value)}</div>
+    </div>`;
+}
+
+async function editDocument(key) {
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  const collection = document.getElementById('doc-collection').value;
+  try {
+    const doc = await api(docApiPath(bucket, scope, collection, key));
+    document.getElementById('ud-bucket').value = bucket;
+    document.getElementById('ud-scope').value = scope;
+    document.getElementById('ud-collection').value = collection;
+    document.getElementById('ud-key').value = key;
+    document.getElementById('ud-value').value = JSON.stringify(doc.value, null, 2);
+    openModal('upsert-doc-modal');
+  } catch(e) {
+    if (e.message && (e.message.includes('not found') || e.message.includes('Not found'))) {
+      toast(`Document '${key}' not found. It may have been deleted or expired. Refreshing list.`, 'info');
+      browseDocuments();
+    } else {
+      toast(e.message, 'error');
+    }
+  }
+}
+
+async function deleteDocAndRefresh(key) {
+  if (!confirm(`Delete document "${key}"?`)) return;
+  const bucket = document.getElementById('doc-bucket').value;
+  const scope = document.getElementById('doc-scope').value;
+  const collection = document.getElementById('doc-collection').value;
+  try {
+    await api(docApiPath(bucket, scope, collection, key), {method:'DELETE'});
+    toast('Document deleted');
+    document.getElementById('doc-result').innerHTML = '';
+    browseDocuments();
+  } catch(e) {
+    if (e.message && (e.message.includes('not found') || e.message.includes('Not found'))) {
+      toast(`Document '${key}' already deleted or not found. Refreshing list.`, 'info');
+      document.getElementById('doc-result').innerHTML = '';
+      browseDocuments();
+    } else {
+      toast(e.message, 'error');
+    }
+  }
+}
+
+async function upsertDocument() {
+  try {
+    const bucket = document.getElementById('ud-bucket').value;
+    const scope = document.getElementById('ud-scope').value;
+    const collection = document.getElementById('ud-collection').value;
+    const key = document.getElementById('ud-key').value.trim();
+    const value = JSON.parse(document.getElementById('ud-value').value);
+    const expiry = document.getElementById('ud-expiry').value ? parseInt(document.getElementById('ud-expiry').value) : undefined;
+    if (!key) { toast('Enter a document key', 'error'); return; }
+    const body = { value };
+    if (expiry) body.expiry = expiry;
+    await api(docApiPath(bucket, scope, collection, key), {
+      method:'PUT', body:JSON.stringify(body)
+    });
+    closeModal('upsert-doc-modal');
+    toast('Document saved');
+    browseDocuments();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Query ----
+async function executeQuery() {
+  const stmt = document.getElementById('query-input').value.trim();
+  if (!stmt) return;
+  // Remove backticks for API
+  const cleaned = stmt.replace(/`/g, '');
+  try {
+    const result = await api('/api/v1/query', {method:'POST', body:JSON.stringify({statement:cleaned})});
+    let html = `<div class="query-metrics">
+      <div>Status: <span>${result.status}</span></div>
+      <div>Results: <span>${result.metrics.result_count}</span></div>
+      <div>Scanned: <span>${result.metrics.scanned_count}</span></div>
+      <div>Elapsed: <span>${result.metrics.elapsed_ms}ms</span></div>
+      ${result.metrics.index_used ? `<div>Index: <span style="color:var(--accent-light)">${result.metrics.index_used}</span></div>` : '<div>Index: <span style="color:var(--text-muted)">Full Scan</span></div>'}
+    </div>`;
+
+    if (result.results.length === 0) {
+      html += '<div style="text-align:center;color:var(--text-muted);padding:24px">No results found</div>';
+    } else {
+      // Try to display as table
+      const firstDoc = result.results[0].doc || result.results[0];
+      const keys = Object.keys(firstDoc).filter(k => !k.startsWith('_'));
+      const metaKeys = Object.keys(result.results[0]).filter(k => k.startsWith('_'));
+
+      html += '<div class="table-wrap"><table><thead><tr>';
+      metaKeys.forEach(k => html += `<th>${k}</th>`);
+      keys.forEach(k => html += `<th>${k}</th>`);
+      html += '</tr></thead><tbody>';
+
+      result.results.forEach(row => {
+        html += '<tr>';
+        const doc = row.doc || row;
+        metaKeys.forEach(k => {
+          const v = row[k];
+          html += `<td style="font-size:12px">${v === null ? '<span class="json-null">null</span>' : (typeof v === 'object' ? JSON.stringify(v) : v)}</td>`;
+        });
+        keys.forEach(k => {
+          const v = doc[k];
+          html += `<td style="font-size:12px">${v === null ? '<span class="json-null">null</span>' : (typeof v === 'object' ? JSON.stringify(v) : v)}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+
+      // Also show raw JSON
+      html += `<details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Raw JSON Response</summary>
+        <div class="json-view" style="margin-top:8px">${formatJSON(result)}</div></details>`;
+    }
+    document.getElementById('query-results').innerHTML = html;
+  } catch(e) {
+    document.getElementById('query-results').innerHTML = `<div class="card" style="border-color:var(--danger)">
+      <div style="color:var(--danger);font-weight:600;margin-bottom:8px">Query Error</div>
+      <div style="font-size:13px">${e.message}</div></div>`;
+  }
+}
+
+// ---- Indexes ----
+async function loadIndexes() {
+  try {
+    const indexes = await api('/api/v1/indexes');
+    const buckets = await api('/api/v1/buckets');
+
+    // Stats cards
+    const totalEntries = indexes.reduce((s, i) => s + i.num_entries, 0);
+    const onlineCount = indexes.filter(i => i.state === 'Online').length;
+    document.getElementById('indexes-stats').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#128218;</div>
+        <div class="stat-value">${indexes.length}</div>
+        <div class="stat-label">Total Indexes</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#9989;</div>
+        <div class="stat-value">${onlineCount}</div>
+        <div class="stat-label">Online</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128202;</div>
+        <div class="stat-value">${totalEntries.toLocaleString()}</div>
+        <div class="stat-label">Total Entries</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#128230;</div>
+        <div class="stat-value">${buckets.length}</div>
+        <div class="stat-label">Buckets</div>
+      </div>
+    `;
+
+    // Populate bucket dropdown in create modal
+    const ciSelect = document.getElementById('ci-bucket');
+    ciSelect.innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+
+    // Table
+    if (indexes.length === 0) {
+      document.getElementById('indexes-table').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">No indexes created yet. Create your first index!</td></tr>';
+      return;
+    }
+
+    document.getElementById('indexes-table').innerHTML = indexes.map(idx => `<tr>
+      <td><strong style="color:var(--accent-light)">${idx.name}</strong></td>
+      <td>${idx.bucket}</td>
+      <td><code style="font-size:12px">${idx.fields.join(', ')}</code></td>
+      <td><span class="badge badge-purple">${idx.index_type}</span></td>
+      <td>${idx.state === 'Online' ? '<span class="badge badge-success">Online</span>' : idx.state === 'Building' ? '<span class="badge badge-warning">Building</span>' : '<span class="badge badge-info">' + idx.state + '</span>'}</td>
+      <td>${idx.num_entries.toLocaleString()}</td>
+      <td style="font-size:12px">${new Date(idx.created_at).toLocaleString()}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" onclick="rebuildIndex('${idx.bucket}','${idx.name}')">Rebuild</button>
+          <button class="btn btn-danger btn-sm" onclick="dropIndex('${idx.bucket}','${idx.name}')">Drop</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createIndex() {
+  try {
+    const name = document.getElementById('ci-name').value.trim();
+    const bucket = document.getElementById('ci-bucket').value;
+    const fieldsStr = document.getElementById('ci-fields').value.trim();
+    const condition = document.getElementById('ci-condition').value.trim() || undefined;
+    if (!name) { toast('Enter an index name', 'error'); return; }
+    if (!fieldsStr) { toast('Enter at least one field', 'error'); return; }
+    const fields = fieldsStr.split(',').map(f => f.trim()).filter(f => f);
+    await api('/api/v1/indexes', { method:'POST', body:JSON.stringify({ name, bucket, fields, condition }) });
+    closeModal('create-index-modal');
+    toast(`Index '${name}' created successfully`);
+    loadIndexes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function dropIndex(bucket, name) {
+  if (!confirm(`Drop index "${name}" from bucket "${bucket}"?`)) return;
+  try {
+    await api(`/api/v1/indexes/${bucket}/${name}`, { method:'DELETE' });
+    toast(`Index '${name}' dropped`);
+    loadIndexes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function rebuildIndex(bucket, name) {
+  try {
+    const result = await api(`/api/v1/indexes/${bucket}/${name}/rebuild`, { method:'POST' });
+    toast(`Index '${name}' rebuilt (${result.entries_indexed} entries)`);
+    loadIndexes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function executeIndexN1ql() {
+  const stmt = document.getElementById('index-n1ql').value.trim();
+  if (!stmt) return;
+  const resultEl = document.getElementById('index-n1ql-result');
+  try {
+    const result = await api('/api/v1/query', { method:'POST', body:JSON.stringify({ statement: stmt.replace(/`/g, '') }) });
+    const r = result.results[0];
+    if (r && r.status === 'created') {
+      resultEl.innerHTML = `<span style="color:var(--success)">&#10003; Index '${r.index}' created (${r.entries_indexed} entries)</span>`;
+      loadIndexes();
+    } else if (r && r.status === 'dropped') {
+      resultEl.innerHTML = `<span style="color:var(--warning)">&#10003; Index '${r.index}' dropped</span>`;
+      loadIndexes();
+    } else {
+      resultEl.innerHTML = `<span style="color:var(--success)">&#10003; ${JSON.stringify(r)}</span>`;
+    }
+  } catch(e) {
+    resultEl.innerHTML = `<span style="color:var(--danger)">&#10007; ${e.message}</span>`;
+  }
+}
+
+// ---- FTS (Full-Text Search) ----
+async function loadFts() {
+  try {
+    const data = await api('/api/v1/fts/indexes');
+    const indexes = data.indexes || [];
+    const buckets = await api('/api/v1/buckets');
+
+    // Stats cards
+    const totalDocs = indexes.reduce((s, i) => s + (i.doc_count || 0), 0);
+    const totalTerms = indexes.reduce((s, i) => s + (i.term_count || 0), 0);
+    const onlineCount = indexes.filter(i => i.state === 'Online').length;
+    document.getElementById('fts-stats').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#128269;</div>
+        <div class="stat-value">${indexes.length}</div>
+        <div class="stat-label">FTS Indexes</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#9989;</div>
+        <div class="stat-value">${onlineCount}</div>
+        <div class="stat-label">Online</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128196;</div>
+        <div class="stat-value">${totalDocs.toLocaleString()}</div>
+        <div class="stat-label">Indexed Docs</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#128220;</div>
+        <div class="stat-value">${totalTerms.toLocaleString()}</div>
+        <div class="stat-label">Unique Terms</div>
+      </div>
+    `;
+
+    // Populate dropdowns
+    const ciSelect = document.getElementById('fts-ci-bucket');
+    ciSelect.innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    const searchSelect = document.getElementById('fts-search-index');
+    searchSelect.innerHTML = '<option value="">Select index...</option>' + indexes.map(i => `<option value="${i.name}">${i.name} (${i.bucket})</option>`).join('');
+
+    // Table
+    if (indexes.length === 0) {
+      document.getElementById('fts-indexes-table').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">No FTS indexes created yet. Create your first full-text search index!</td></tr>';
+      return;
+    }
+
+    document.getElementById('fts-indexes-table').innerHTML = indexes.map(idx => `<tr>
+      <td><strong style="color:var(--accent-light)">${idx.name}</strong></td>
+      <td>${idx.bucket}</td>
+      <td><code style="font-size:12px">${(idx.fields || []).map(f => f.field || f).join(', ') || '(all)'}</code></td>
+      <td><span class="badge badge-info">${idx.analyzer?.tokenizer || 'standard'}</span></td>
+      <td>${idx.state === 'Online' ? '<span class="badge badge-success">Online</span>' : idx.state === 'Building' ? '<span class="badge badge-warning">Building</span>' : '<span class="badge badge-info">' + idx.state + '</span>'}</td>
+      <td>${(idx.doc_count || 0).toLocaleString()}</td>
+      <td>${(idx.term_count || 0).toLocaleString()}</td>
+      <td style="font-size:12px">${new Date(idx.created_at).toLocaleString()}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" onclick="rebuildFtsIndex('${idx.name}')">Rebuild</button>
+          <button class="btn btn-danger btn-sm" onclick="dropFtsIndex('${idx.name}')">Drop</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createFtsIndex() {
+  try {
+    const name = document.getElementById('fts-ci-name').value.trim();
+    const bucket = document.getElementById('fts-ci-bucket').value;
+    const fieldsStr = document.getElementById('fts-ci-fields').value.trim();
+    const tokenizer = document.getElementById('fts-ci-tokenizer').value;
+    const lowercase = document.getElementById('fts-ci-lowercase').checked;
+    const stopWords = document.getElementById('fts-ci-stopwords').checked;
+    if (!name) { toast('Enter an index name', 'error'); return; }
+    const fields = fieldsStr ? fieldsStr.split(',').map(f => ({ field: f.trim(), store: true })).filter(f => f.field) : [];
+    const body = { name, bucket, fields, analyzer: { tokenizer, lowercase, stop_words: stopWords, min_token_length: 1 } };
+    await api('/api/v1/fts/indexes', { method:'POST', body:JSON.stringify(body) });
+    closeModal('create-fts-index-modal');
+    toast(`FTS index '${name}' created (building in background)`);
+    setTimeout(loadFts, 1000); // reload after a short delay for build
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function dropFtsIndex(name) {
+  if (!confirm(`Drop FTS index "${name}"?`)) return;
+  try {
+    await api(`/api/v1/fts/indexes/${name}`, { method:'DELETE' });
+    toast(`FTS index '${name}' dropped`);
+    loadFts();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function rebuildFtsIndex(name) {
+  try {
+    const result = await api(`/api/v1/fts/indexes/${name}/build`, { method:'POST' });
+    toast(`FTS index '${name}' rebuilt (${result.doc_count || 0} docs)`);
+    loadFts();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function executeFtsSearch() {
+  const indexName = document.getElementById('fts-search-index').value;
+  const queryText = document.getElementById('fts-search-query').value.trim();
+  const field = document.getElementById('fts-search-field').value.trim();
+  const queryType = document.getElementById('fts-search-type').value;
+  const highlight = document.getElementById('fts-search-highlight').checked;
+  const statusEl = document.getElementById('fts-search-status');
+
+  if (!indexName) { toast('Select an FTS index', 'error'); return; }
+  if (!queryText) { toast('Enter a search query', 'error'); return; }
+
+  statusEl.textContent = 'Searching...';
+
+  try {
+    // Build query based on type
+    let query;
+    const targetField = field || '_all';
+    switch(queryType) {
+      case 'match':
+        query = { type: 'match', field: targetField, query: queryText, fuzziness: 0 };
+        break;
+      case 'match_phrase':
+        query = { type: 'match_phrase', field: targetField, query: queryText };
+        break;
+      case 'term':
+        query = { type: 'term', field: targetField, term: queryText.toLowerCase() };
+        break;
+      case 'prefix':
+        query = { type: 'prefix', field: targetField, prefix: queryText.toLowerCase() };
+        break;
+      case 'wildcard':
+        query = { type: 'wildcard', field: targetField, wildcard: queryText };
+        break;
+    }
+
+    const body = { index: indexName, query, size: 20, from: 0, highlight, fields: [] };
+    const result = await api(`/api/v1/fts/indexes/${indexName}/search`, { method:'POST', body:JSON.stringify(body) });
+
+    statusEl.textContent = `${result.total_hits || 0} hits in ${result.took_ms || 0}ms (max score: ${(result.max_score || 0).toFixed(4)})`;
+
+    const resultsDiv = document.getElementById('fts-results');
+    const resultsList = document.getElementById('fts-results-list');
+    const resultCount = document.getElementById('fts-result-count');
+
+    if ((result.hits || []).length === 0) {
+      resultsDiv.style.display = 'block';
+      resultCount.textContent = '(0 hits)';
+      resultsList.innerHTML = '<div class="card" style="padding:24px; text-align:center; color:var(--text-muted)">No results found for your query.</div>';
+      return;
+    }
+
+    resultsDiv.style.display = 'block';
+    resultCount.textContent = `(${result.total_hits} hits)`;
+
+    resultsList.innerHTML = result.hits.map((hit, i) => {
+      const fieldsHtml = Object.entries(hit.fields || {}).map(([k, v]) => {
+        const val = typeof v === 'string' && v.length > 200 ? v.substring(0, 200) + '...' : v;
+        return `<div style="margin-bottom:4px"><span style="color:var(--text-secondary); font-size:12px">${k}:</span> <span style="font-size:13px">${val}</span></div>`;
+      }).join('');
+
+      const fragmentsHtml = hit.fragments ? Object.entries(hit.fragments).map(([field, frags]) =>
+        frags.map(f => `<div style="padding:8px 12px; background:var(--bg-tertiary); border-radius:4px; margin-top:4px; font-size:13px; line-height:1.6"><span style="color:var(--text-secondary); font-size:11px">${field}:</span> ${f}</div>`).join('')
+      ).join('') : '';
+
+      return `<div class="card" style="padding:16px; margin-bottom:8px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div>
+            <span style="color:var(--text-secondary); font-size:12px">#${i + 1}</span>
+            <strong style="color:var(--accent-light); margin-left:8px">${hit.id}</strong>
+          </div>
+          <span class="badge badge-info" style="font-family:monospace">score: ${hit.score.toFixed(4)}</span>
+        </div>
+        ${fieldsHtml}
+        ${fragmentsHtml}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`;
+    toast(e.message, 'error');
+  }
+}
+
+// ---- DCP Streams ----
+let dcpEventSource = null;
+
+async function loadDcpStreams() {
+  try {
+    const data = await api('/api/v1/dcp/streams');
+    const streams = data.streams || [];
+    const buckets = await api('/api/v1/buckets');
+
+    // Stats
+    const activeCount = streams.filter(s => s.active).length;
+    const totalEvents = streams.reduce((s, st) => s + st.events_streamed, 0);
+    document.getElementById('dcp-stats').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#9889;</div>
+        <div class="stat-value">${streams.length}</div>
+        <div class="stat-label">Total Streams</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#9989;</div>
+        <div class="stat-value">${activeCount}</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128202;</div>
+        <div class="stat-value">${(streams.length - activeCount)}</div>
+        <div class="stat-label">Paused</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#128230;</div>
+        <div class="stat-value">${totalEvents.toLocaleString()}</div>
+        <div class="stat-label">Total Events Streamed</div>
+      </div>
+    `;
+
+    // Bucket dropdowns
+    document.getElementById('dcp-cs-bucket').innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    document.getElementById('dcp-backfill-bucket').innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    document.getElementById('dcp-live-stream').innerHTML = '<option value="">-- Select --</option>' + streams.map(s => `<option value="${s.id}">${s.name} (${s.id.substring(0,12)}...)</option>`).join('');
+
+    // Table
+    if (streams.length === 0) {
+      document.getElementById('dcp-streams-table').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">No DCP streams created yet.</td></tr>';
+      return;
+    }
+
+    document.getElementById('dcp-streams-table').innerHTML = streams.map(s => `<tr>
+      <td><strong style="color:var(--accent-light)">${s.name}</strong></td>
+      <td><code style="font-size:11px">${s.id.substring(0,16)}...</code></td>
+      <td>${s.bucket}</td>
+      <td>${s.scope_filter || '<em>all</em>'}</td>
+      <td>${s.collection_filter || '<em>all</em>'}</td>
+      <td>${s.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-warning">Paused</span>'}</td>
+      <td>${s.events_streamed.toLocaleString()}</td>
+      <td style="font-size:12px">${new Date(s.created_at).toLocaleString()}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${s.active
+            ? `<button class="btn btn-secondary btn-sm" onclick="pauseDcpStream('${s.id}')">Pause</button>`
+            : `<button class="btn btn-primary btn-sm" onclick="resumeDcpStream('${s.id}')">Resume</button>`}
+          <button class="btn btn-secondary btn-sm" onclick="pollDcpEvents('${s.id}')">Poll</button>
+          <button class="btn btn-danger btn-sm" onclick="closeDcpStream('${s.id}')">Close</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createDcpStream() {
+  try {
+    const name = document.getElementById('dcp-cs-name').value.trim();
+    const bucket = document.getElementById('dcp-cs-bucket').value;
+    const scope = document.getElementById('dcp-cs-scope').value.trim() || null;
+    const collection = document.getElementById('dcp-cs-collection').value.trim() || null;
+    const backfill = document.getElementById('dcp-cs-backfill').checked;
+
+    if (!name) { toast('Enter a stream name', 'error'); return; }
+    if (!bucket) { toast('Select a bucket', 'error'); return; }
+
+    await api('/api/v1/dcp/streams', {
+      method: 'POST',
+      body: JSON.stringify({
+        name, bucket,
+        scope_filter: scope,
+        collection_filter: collection,
+        include_backfill: backfill
+      })
+    });
+    closeModal('create-dcp-stream-modal');
+    toast(`DCP Stream '${name}' created`);
+    loadDcpStreams();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function closeDcpStream(id) {
+  if (!confirm(`Close DCP stream "${id}"?`)) return;
+  try {
+    await api(`/api/v1/dcp/streams/${id}`, { method: 'DELETE' });
+    toast('Stream closed');
+    loadDcpStreams();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function pauseDcpStream(id) {
+  try {
+    await api(`/api/v1/dcp/streams/${id}/pause`, { method: 'POST' });
+    toast('Stream paused');
+    loadDcpStreams();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function resumeDcpStream(id) {
+  try {
+    await api(`/api/v1/dcp/streams/${id}/resume`, { method: 'POST' });
+    toast('Stream resumed');
+    loadDcpStreams();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function pollDcpEvents(id) {
+  try {
+    const data = await api(`/api/v1/dcp/streams/${id}/events`);
+    const events = data.events || [];
+    if (events.length === 0) {
+      toast('No new events available', 'info');
+      return;
+    }
+    const eventsEl = document.getElementById('dcp-live-events');
+    events.forEach(ev => {
+      const line = document.createElement('div');
+      line.style.cssText = 'padding:4px 0; border-bottom:1px solid var(--border-color)';
+      const color = ev.event_type === 'mutation' ? 'var(--success)' : ev.event_type === 'deletion' ? 'var(--danger)' : 'var(--warning)';
+      line.innerHTML = `<span style="color:${color}">[${ev.event_type.toUpperCase()}]</span> <strong>${ev.key}</strong> seq:${ev.seq_no} cas:${ev.cas} vb:${ev.vbucket_id} <span style="color:var(--text-muted)">${ev.timestamp}</span>`;
+      eventsEl.appendChild(line);
+    });
+    eventsEl.scrollTop = eventsEl.scrollHeight;
+    toast(`Received ${events.length} events`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function dcpBackfill() {
+  try {
+    const bucket = document.getElementById('dcp-backfill-bucket').value;
+    const scope = document.getElementById('dcp-backfill-scope').value.trim() || null;
+    const collection = document.getElementById('dcp-backfill-collection').value.trim() || null;
+
+    if (!bucket) { toast('Select a bucket', 'error'); return; }
+
+    const data = await api('/api/v1/dcp/backfill', {
+      method: 'POST',
+      body: JSON.stringify({ bucket, scope, collection })
+    });
+
+    const events = data.events || [];
+    const resultEl = document.getElementById('dcp-backfill-result');
+    resultEl.innerHTML = `<p style="color:var(--text-secondary)">Backfill returned <strong>${events.length}</strong> events from bucket '${bucket}'</p>`;
+
+    if (events.length > 0) {
+      resultEl.innerHTML += `<div style="max-height:300px; overflow-y:auto; margin-top:8px; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:12px; background:var(--bg-primary); border-radius:8px; padding:12px; border:1px solid var(--border-color)">` +
+        events.slice(0, 100).map(ev => {
+          const color = ev.event_type === 'mutation' ? 'var(--success)' : 'var(--danger)';
+          return `<div style="padding:2px 0"><span style="color:${color}">[${ev.event_type.toUpperCase()}]</span> <strong>${ev.key}</strong> seq:${ev.seq_no} vb:${ev.vbucket_id}</div>`;
+        }).join('') +
+        (events.length > 100 ? `<div style="color:var(--text-muted)">...and ${events.length - 100} more</div>` : '') +
+      `</div>`;
+    }
+    toast(`Backfill complete: ${events.length} events`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function toggleDcpSse() {
+  const btn = document.getElementById('dcp-sse-btn');
+  const streamId = document.getElementById('dcp-live-stream').value;
+
+  if (dcpEventSource) {
+    dcpEventSource.close();
+    dcpEventSource = null;
+    btn.textContent = 'Start Listening';
+    btn.className = 'btn btn-primary';
+    toast('SSE stream disconnected');
+    return;
+  }
+
+  if (!streamId) { toast('Select a stream first', 'error'); return; }
+
+  dcpEventSource = new EventSource(`/api/v1/dcp/streams/${streamId}/sse`);
+  btn.textContent = 'Stop Listening';
+  btn.className = 'btn btn-danger';
+
+  const eventsEl = document.getElementById('dcp-live-events');
+  eventsEl.innerHTML = '<div style="color:var(--text-muted)">Connecting to SSE stream...</div>';
+
+  dcpEventSource.addEventListener('connected', (e) => {
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:4px 0; color:var(--success)';
+    line.textContent = '✓ Connected to DCP stream';
+    eventsEl.appendChild(line);
+  });
+
+  dcpEventSource.addEventListener('mutation', (e) => {
+    const ev = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:2px 0; border-bottom:1px solid var(--border-color)';
+    line.innerHTML = `<span style="color:var(--success)">[MUTATION]</span> <strong>${ev.key}</strong> seq:${ev.seq_no} cas:${ev.cas} vb:${ev.vbucket_id} <span style="color:var(--text-muted)">${ev.timestamp}</span>`;
+    eventsEl.appendChild(line);
+    eventsEl.scrollTop = eventsEl.scrollHeight;
+  });
+
+  dcpEventSource.addEventListener('deletion', (e) => {
+    const ev = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:2px 0; border-bottom:1px solid var(--border-color)';
+    line.innerHTML = `<span style="color:var(--danger)">[DELETION]</span> <strong>${ev.key}</strong> seq:${ev.seq_no} cas:${ev.cas} vb:${ev.vbucket_id} <span style="color:var(--text-muted)">${ev.timestamp}</span>`;
+    eventsEl.appendChild(line);
+    eventsEl.scrollTop = eventsEl.scrollHeight;
+  });
+
+  dcpEventSource.addEventListener('expiration', (e) => {
+    const ev = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:2px 0; border-bottom:1px solid var(--border-color)';
+    line.innerHTML = `<span style="color:var(--warning)">[EXPIRATION]</span> <strong>${ev.key}</strong> seq:${ev.seq_no} <span style="color:var(--text-muted)">${ev.timestamp}</span>`;
+    eventsEl.appendChild(line);
+    eventsEl.scrollTop = eventsEl.scrollHeight;
+  });
+
+  dcpEventSource.addEventListener('lagged', (e) => {
+    const data = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:2px 0; color:var(--warning)';
+    line.textContent = `⚠ Skipped ${data.skipped} events (lagged)`;
+    eventsEl.appendChild(line);
+  });
+
+  dcpEventSource.onerror = () => {
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:2px 0; color:var(--danger)';
+    line.textContent = '✗ SSE connection error';
+    eventsEl.appendChild(line);
+  };
+}
+
+// ---- Audit Log ----
+async function loadAuditEvents() {
+  try {
+    const bucket = (document.getElementById('audit-filter-bucket')?.value || '').trim();
+    const limit = parseInt(document.getElementById('audit-filter-limit')?.value || '100') || 100;
+    let url = `/api/v1/audit/events?limit=${limit}`;
+    if (bucket) url += `&bucket=${encodeURIComponent(bucket)}`;
+    const data = await api(url);
+    const events = data.events || [];
+    const statsEl = document.getElementById('audit-stats');
+    statsEl.innerHTML = `
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--accent)">${data.total || 0}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Total Events</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--success)">${events.filter(e => (e.event_type||'') === 'AuthSuccess').length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Auth Success</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--danger)">${events.filter(e => (e.event_type||'') === 'AuthFailure').length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Auth Failures</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--warning)">${events.length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Showing</div>
+      </div>
+    `;
+    const tbody = document.getElementById('audit-events-table');
+    if (events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">No audit events recorded yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = events.map(ev => {
+      const ts = new Date(ev.timestamp).toLocaleString();
+      const et = ev.event_type || '';
+      const typeColor = et.includes('Failure') || et.includes('Deleted') ? 'var(--danger)' :
+                        et.includes('Success') || et.includes('Created') || et.includes('Started') ? 'var(--success)' :
+                        'var(--text-secondary)';
+      return `<tr>
+        <td><code>${ev.id}</code></td>
+        <td style="font-size:12px;white-space:nowrap">${ts}</td>
+        <td><span style="color:${typeColor};font-weight:600">${et}</span></td>
+        <td>${ev.description || '-'}</td>
+        <td>${ev.user || '-'}</td>
+        <td>${ev.bucket || '-'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function clearAuditEvents() {
+  if (!confirm('Clear all audit events?')) return;
+  try {
+    await api('/api/v1/audit/events/clear', { method: 'POST' });
+    toast('Audit events cleared');
+    loadAuditEvents();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- RBAC (Users & Roles) ----
+async function loadRbac() {
+  try {
+    const data = await api('/api/v1/rbac/users');
+    const users = data.users || [];
+    const tbody = document.getElementById('rbac-users-table');
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">No users found</td></tr>';
+    } else {
+      tbody.innerHTML = users.map(u => `<tr>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.display_name}</td>
+        <td>${(u.roles||[]).map(r => `<span class="badge badge-info">${r.role}${r.bucket ? ' ('+r.bucket+')' : ''}</span>`).join(' ')}</td>
+        <td>${u.builtin ? '<span class="badge badge-warning">Built-in</span>' : '<span class="badge badge-success">Custom</span>'}</td>
+        <td>${new Date(u.created_at).toLocaleDateString()}</td>
+        <td>${u.builtin ? '-' : `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')">Delete</button>`}</td>
+      </tr>`).join('');
+    }
+    // Load roles
+    const rolesData = await api('/api/v1/rbac/roles');
+    const rolesEl = document.getElementById('rbac-roles-list');
+    rolesEl.innerHTML = (rolesData.roles || []).map(r => `
+      <div class="card" style="padding:12px">
+        <div style="font-weight:600;color:var(--accent-light);margin-bottom:4px">${r.name}</div>
+        <div style="font-size:12px;color:var(--text-secondary)">${r.description}</div>
+      </div>
+    `).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createUser() {
+  const username = document.getElementById('rbac-cu-username').value.trim();
+  const password = document.getElementById('rbac-cu-password').value;
+  const display_name = document.getElementById('rbac-cu-display').value.trim() || username;
+  const role = document.getElementById('rbac-cu-role').value;
+  const bucket = document.getElementById('rbac-cu-bucket').value.trim();
+  if (!username || !password) { toast('Username and password required', 'error'); return; }
+  try {
+    await api('/api/v1/rbac/users', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        username, password, display_name,
+        roles: [{ role, bucket: bucket || null }]
+      })
+    });
+    toast('User created: ' + username);
+    closeModal('create-user-modal');
+    loadRbac();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteUser(username) {
+  if (!confirm('Delete user "' + username + '"?')) return;
+  try {
+    await api('/api/v1/rbac/users/' + encodeURIComponent(username), { method: 'DELETE' });
+    toast('User deleted: ' + username);
+    loadRbac();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Backup / Restore ----
+async function loadBackups() {
+  try {
+    const data = await api('/api/v1/backups');
+    const backups = data.backups || [];
+    const tbody = document.getElementById('backups-table');
+    if (backups.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:32px">No backups found. Click "Create Backup" to make one.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = backups.map(b => {
+      const m = b.manifest || {};
+      const bucketCount = (m.buckets || []).length;
+      return `<tr>
+        <td><strong>${b.name}</strong></td>
+        <td>${m.timestamp ? new Date(m.timestamp).toLocaleString() : '-'}</td>
+        <td>${bucketCount}</td>
+        <td>${m.total_documents || 0}</td>
+        <td style="display:flex;gap:4px">
+          <button class="btn btn-primary btn-sm" onclick="restoreBackup('${b.name}')">Restore</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBackup('${b.name}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createBackup() {
+  try {
+    const data = await api('/api/v1/backups', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({})
+    });
+    toast(`Backup created: ${data.backup} (${data.total_documents} docs)`);
+    loadBackups();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function restoreBackup(name) {
+  if (!confirm('Restore backup "' + name + '"? This will add data to existing buckets.')) return;
+  try {
+    const data = await api('/api/v1/backups/' + encodeURIComponent(name) + '/restore', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({})
+    });
+    toast(`Backup restored: ${data.total_documents} documents`);
+    loadBackups();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteBackup(name) {
+  if (!confirm('Delete backup "' + name + '"?')) return;
+  try {
+    await api('/api/v1/backups/' + encodeURIComponent(name), { method: 'DELETE' });
+    toast('Backup deleted: ' + name);
+    loadBackups();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Transactions ----
+let activeTxnId = null;
+
+async function loadTransactions() {
+  try {
+    const data = await api('/api/v1/transactions');
+    const txns = data.transactions || [];
+    const statsEl = document.getElementById('txn-stats');
+    statsEl.innerHTML = `
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--accent)">${txns.length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Active Transactions</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--success)">${txns.filter(t=>t.state==='Active').length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Active</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--warning)">${txns.filter(t=>t.state==='Committing').length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Committing</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--text-secondary)">${txns.reduce((s,t)=>s+t.mutations.length,0)}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Staged Mutations</div>
+      </div>
+    `;
+    const tbody = document.getElementById('transactions-table');
+    if (txns.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">No active transactions</td></tr>';
+      return;
+    }
+    tbody.innerHTML = txns.map(t => {
+      const started = new Date(t.started_at).toLocaleTimeString();
+      const expires = new Date(t.expires_at).toLocaleTimeString();
+      const stateColor = t.state === 'Active' ? 'var(--success)' : t.state === 'Committing' ? 'var(--warning)' : 'var(--danger)';
+      return `<tr>
+        <td><code style="font-size:11px">${t.id.substring(0,8)}...</code></td>
+        <td><span style="color:${stateColor};font-weight:600">${t.state}</span></td>
+        <td>${started}</td>
+        <td>${expires}</td>
+        <td>${t.mutations.length}</td>
+        <td>${t.read_count}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openTxnWorkbench('${t.id}')">Open</button>
+          <button class="btn btn-danger btn-sm" onclick="rollbackTxn('${t.id}')">Rollback</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function beginTransaction() {
+  try {
+    const data = await api('/api/v1/transactions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+    toast('Transaction started: ' + data.txn_id);
+    activeTxnId = data.txn_id;
+    openTxnWorkbench(data.txn_id);
+    loadTransactions();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function openTxnWorkbench(txnId) {
+  activeTxnId = txnId;
+  document.getElementById('txn-workbench').style.display = 'block';
+  document.getElementById('txn-workbench-id').textContent = txnId.substring(0, 8) + '...';
+  document.getElementById('txn-result').innerHTML = '';
+}
+
+async function txnGet() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    const data = await api(`/api/v1/transactions/${activeTxnId}/get`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ bucket: document.getElementById('txn-bucket').value, key: document.getElementById('txn-key').value })
+    });
+    document.getElementById('txn-value').value = JSON.stringify(data.value, null, 2);
+    document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--success-bg)"><strong>GET OK</strong> — CAS: ${data.cas}</div>`;
+  } catch(e) { document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger-bg);color:var(--danger)">${e.message}</div>`; }
+}
+
+async function txnInsert() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    const val = JSON.parse(document.getElementById('txn-value').value || '{}');
+    const data = await api(`/api/v1/transactions/${activeTxnId}/insert`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ bucket: document.getElementById('txn-bucket').value, key: document.getElementById('txn-key').value, value: val })
+    });
+    document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--success-bg)"><strong>INSERT staged</strong></div>`;
+  } catch(e) { document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger-bg);color:var(--danger)">${e.message}</div>`; }
+}
+
+async function txnReplace() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    const val = JSON.parse(document.getElementById('txn-value').value || '{}');
+    const data = await api(`/api/v1/transactions/${activeTxnId}/replace`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ bucket: document.getElementById('txn-bucket').value, key: document.getElementById('txn-key').value, value: val })
+    });
+    document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--warning);color:#000"><strong>REPLACE staged</strong></div>`;
+  } catch(e) { document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger-bg);color:var(--danger)">${e.message}</div>`; }
+}
+
+async function txnRemove() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    const data = await api(`/api/v1/transactions/${activeTxnId}/remove`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ bucket: document.getElementById('txn-bucket').value, key: document.getElementById('txn-key').value })
+    });
+    document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger);color:#fff"><strong>REMOVE staged</strong></div>`;
+  } catch(e) { document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger-bg);color:var(--danger)">${e.message}</div>`; }
+}
+
+async function txnCommit() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    const data = await api(`/api/v1/transactions/${activeTxnId}/commit`, { method: 'POST' });
+    document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--success);color:#fff"><strong>COMMITTED</strong> — ${data.mutations_applied} mutations applied in ${data.elapsed_ms}ms</div>`;
+    activeTxnId = null;
+    document.getElementById('txn-workbench').style.display = 'none';
+    loadTransactions();
+  } catch(e) { document.getElementById('txn-result').innerHTML = `<div class="card" style="padding:12px;margin-top:8px;background:var(--danger);color:#fff"><strong>COMMIT FAILED</strong> — ${e.message}</div>`; }
+}
+
+async function txnRollback() {
+  if (!activeTxnId) return toast('No active transaction', 'error');
+  try {
+    await api(`/api/v1/transactions/${activeTxnId}/rollback`, { method: 'POST' });
+    toast('Transaction rolled back');
+    activeTxnId = null;
+    document.getElementById('txn-workbench').style.display = 'none';
+    loadTransactions();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function rollbackTxn(txnId) {
+  if (!confirm('Rollback transaction?')) return;
+  try {
+    await api(`/api/v1/transactions/${txnId}/rollback`, { method: 'POST' });
+    toast('Transaction rolled back');
+    if (activeTxnId === txnId) {
+      activeTxnId = null;
+      document.getElementById('txn-workbench').style.display = 'none';
+    }
+    loadTransactions();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- XDCR ----
+function showXdcrTab(tab) {
+  document.querySelectorAll('#page-xdcr .tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('xdcr-tab-replications').style.display = tab === 'replications' ? 'block' : 'none';
+  document.getElementById('xdcr-tab-clusters').style.display = tab === 'clusters' ? 'block' : 'none';
+  if (tab === 'clusters') loadRemoteClusters();
+}
+
+async function loadXdcr() {
+  try {
+    const replications = await api('/api/v1/xdcr/replications');
+    if (replications.length === 0) {
+      document.getElementById('xdcr-replications-list').innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <h3>No XDCR Replications</h3><p>Set up cross-datacenter replication to keep data synchronized</p>
+        <button class="btn btn-primary" onclick="openModal('create-replication-modal')">Create Replication</button></div>`;
+      return;
+    }
+    document.getElementById('xdcr-replications-list').innerHTML = replications.map(r => `
+      <div class="card" style="margin-bottom:12px">
+        <div class="xdcr-flow">
+          <div class="flow-node">&#128230; ${r.source_bucket}</div>
+          <div class="flow-arrow">&rarr;&rarr;&rarr;</div>
+          <div class="flow-node">&#127760; ${r.target_cluster}</div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node">&#128230; ${r.target_bucket}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <div>
+            <span style="font-size:11px;color:var(--text-muted)">ID:</span>
+            <code style="font-size:12px;color:var(--accent-light)">${r.id}</code>
+            &nbsp; ${statusBadge(r.status)}
+            &nbsp; <span class="badge badge-info">${r.conflict_resolution}</span>
+            ${r.bidirectional ? '<span class="badge badge-purple">Bidirectional</span>' : ''}
+          </div>
+          <div style="display:flex;gap:4px">
+            ${r.status === 'Running' ? `<button class="btn btn-secondary btn-sm" onclick="pauseReplication('${r.id}')">Pause</button>` : ''}
+            ${r.status === 'Paused' || r.status === 'Error' ? `<button class="btn btn-success btn-sm" onclick="resumeReplication('${r.id}')">Resume</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="deleteReplication('${r.id}')">Delete</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px;font-size:12px">
+          <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+            <span style="color:var(--text-muted)">Docs Replicated</span><br><strong style="color:var(--success)">${r.docs_replicated.toLocaleString()}</strong>
+          </div>
+          <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+            <span style="color:var(--text-muted)">Conflicts</span><br><strong style="color:var(--warning)">${r.total_conflicts.toLocaleString()}</strong>
+          </div>
+          <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+            <span style="color:var(--text-muted)">Failed</span><br><strong style="color:var(--danger)">${r.docs_failed.toLocaleString()}</strong>
+          </div>
+          <div style="background:var(--bg-tertiary);padding:8px 12px;border-radius:var(--radius-sm)">
+            <span style="color:var(--text-muted)">Last Replicated</span><br><strong>${timeAgo(r.last_replicated_at)}</strong>
+          </div>
+        </div>
+        ${r.error_message ? `<div style="margin-top:8px;padding:8px 12px;background:var(--danger-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--danger)">${r.error_message}</div>` : ''}
+        ${r.filter_expression ? `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">Filter: <code>${r.filter_expression}</code></div>` : ''}
+      </div>
+    `).join('');
+
+    // Populate create replication form
+    const buckets = await api('/api/v1/buckets');
+    const clusters = await api('/api/v1/xdcr/clusters');
+    document.getElementById('xr-source').innerHTML = buckets.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    document.getElementById('xr-cluster').innerHTML = clusters.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadRemoteClusters() {
+  try {
+    const clusters = await api('/api/v1/xdcr/clusters');
+    document.getElementById('remote-clusters-table').innerHTML = clusters.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No remote clusters configured</td></tr>'
+      : clusters.map(c => `<tr>
+        <td><strong>${c.name}</strong></td>
+        <td>${c.hostname}</td>
+        <td>${c.port}</td>
+        <td>${c.secure ? '<span class="badge badge-success">TLS</span>' : '<span class="badge badge-info">Plain</span>'}</td>
+        <td>${timeAgo(c.created_at)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="removeRemoteCluster('${c.name}')">Remove</button></td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+async function addRemoteCluster() {
+  try {
+    await api('/api/v1/xdcr/clusters', {method:'POST', body:JSON.stringify({
+      name: document.getElementById('rc-name').value,
+      hostname: document.getElementById('rc-hostname').value,
+      port: parseInt(document.getElementById('rc-port').value),
+      secure: document.getElementById('rc-secure').checked
+    })});
+    closeModal('add-cluster-modal');
+    toast('Remote cluster added');
+    loadRemoteClusters();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function removeRemoteCluster(name) {
+  if (!confirm(`Remove remote cluster "${name}"?`)) return;
+  try {
+    await api('/api/v1/xdcr/clusters/' + name, {method:'DELETE'});
+    toast('Remote cluster removed');
+    loadRemoteClusters();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createReplication() {
+  try {
+    const filter = document.getElementById('xr-filter').value.trim();
+    await api('/api/v1/xdcr/replications', {method:'POST', body:JSON.stringify({
+      source_bucket: document.getElementById('xr-source').value,
+      target_cluster: document.getElementById('xr-cluster').value,
+      target_bucket: document.getElementById('xr-target').value,
+      conflict_resolution: document.getElementById('xr-conflict').value,
+      filter_expression: filter || undefined,
+      batch_size: 500
+    })});
+    closeModal('create-replication-modal');
+    toast('Replication created');
+    loadXdcr();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function pauseReplication(id) {
+  try {
+    await api(`/api/v1/xdcr/replications/${encodeURIComponent(id)}/pause`, {method:'POST'});
+    toast('Replication paused');
+    loadXdcr();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function resumeReplication(id) {
+  try {
+    await api(`/api/v1/xdcr/replications/${encodeURIComponent(id)}/resume`, {method:'POST'});
+    toast('Replication resumed');
+    loadXdcr();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteReplication(id) {
+  if (!confirm('Delete this replication?')) return;
+  try {
+    await api(`/api/v1/xdcr/replications/${encodeURIComponent(id)}`, {method:'DELETE'});
+    toast('Replication deleted');
+    loadXdcr();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Partitions ----
+const nodeColors = ['#6c5ce7','#00b894','#e17055','#74b9ff','#fdcb6e','#a29bfe','#fab1a0','#55efc4','#ff7675','#81ecec','#ffeaa7','#dfe6e9'];
+
+function getNodeColor(idx) { return nodeColors[idx % nodeColors.length]; }
+
+async function loadPartitions() {
+  try {
+    const [summary, rebalance] = await Promise.all([
+      api('/api/v1/cluster/partitions/summary'),
+      api('/api/v1/cluster/rebalance')
+    ]);
+
+    const nodes = summary.nodes || [];
+    const totalVB = summary.num_vbuckets;
+    const rev = summary.revision;
+    const reb = rebalance.status;
+
+    // Stats cards
+    document.getElementById('partition-stats').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#128200;</div>
+        <div class="stat-value">${totalVB}</div>
+        <div class="stat-label">Total vBuckets</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128279;</div>
+        <div class="stat-value">${nodes.length}</div>
+        <div class="stat-label">Data Nodes</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#128260;</div>
+        <div class="stat-value">${rev}</div>
+        <div class="stat-label">Map Revision</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:${reb.in_progress ? 'var(--warning-bg)' : 'var(--success-bg)'}">&#9881;</div>
+        <div class="stat-value">${reb.in_progress ? Math.round(reb.progress_percent)+'%' : 'Balanced'}</div>
+        <div class="stat-label">Rebalance Status</div>
+      </div>
+    `;
+
+    // Rebalance banner
+    const banner = document.getElementById('rebalance-banner');
+    if (reb.in_progress) {
+      banner.style.display = 'flex';
+      banner.innerHTML = `<div class="rebalance-banner active" style="width:100%">
+        <div>
+          <div style="font-weight:600;color:var(--info);margin-bottom:4px">&#9881; Rebalance In Progress</div>
+          <div style="font-size:12px;color:var(--text-secondary)">${reb.transfers_completed} / ${reb.transfers_total} transfers completed</div>
+          <div class="progress-bar" style="width:200px;margin-top:8px">
+            <div class="progress-fill" style="width:${reb.progress_percent}%;background:var(--info)"></div>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Distribution bar chart
+    let distHtml = '<div class="card" style="padding:20px">';
+    distHtml += '<div style="font-weight:600;margin-bottom:16px">vBucket Ownership Distribution</div>';
+    distHtml += '<div class="partition-bar-container">';
+    nodes.forEach((n, i) => {
+      const pct = totalVB > 0 ? (n.active_count / totalVB * 100) : 0;
+      distHtml += `<div class="partition-bar" style="width:${pct}%;background:${getNodeColor(i)}" title="${n.node_name}: ${n.active_count} active vBuckets (${pct.toFixed(1)}%)">${pct > 8 ? n.node_name + ' (' + n.active_count + ')' : ''}</div>`;
+    });
+    distHtml += '</div>';
+    distHtml += '<div class="partition-legend">';
+    nodes.forEach((n, i) => {
+      distHtml += `<div class="partition-legend-item"><div class="partition-legend-dot" style="background:${getNodeColor(i)}"></div>${n.node_name}: <strong>${n.active_count}</strong> active, <strong>${n.replica_count}</strong> replica</div>`;
+    });
+    distHtml += '</div>';
+
+    // Per-node detail table
+    distHtml += '<div class="table-wrap" style="margin-top:20px"><table><thead><tr><th>Node</th><th>Active vBuckets</th><th>Replica vBuckets</th><th>Range</th><th>Load %</th></tr></thead><tbody>';
+    nodes.forEach((n, i) => {
+      const pct = totalVB > 0 ? (n.active_count / totalVB * 100) : 0;
+      distHtml += `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="partition-legend-dot" style="background:${getNodeColor(i)}"></div><strong>${n.node_name}</strong></div></td>
+        <td>${n.active_count}</td>
+        <td>${n.replica_count}</td>
+        <td style="font-size:11px;font-family:monospace;color:var(--text-muted)">${n.active_vbucket_range}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress-bar" style="width:100px;flex-shrink:0"><div class="progress-fill" style="width:${pct}%;background:${getNodeColor(i)}"></div></div>
+            <span style="font-size:12px">${pct.toFixed(1)}%</span>
+          </div>
+        </td>
+      </tr>`;
+    });
+    distHtml += '</tbody></table></div></div>';
+    document.getElementById('partition-distribution').innerHTML = distHtml;
+
+    // Heatmap - fetch full partition map
+    const fullMap = await api('/api/v1/cluster/partitions');
+    const nodeNameToIdx = {};
+    (fullMap.nodes || []).forEach((n, i) => { nodeNameToIdx[n.node_name] = i; });
+
+    let hmHtml = '<div style="margin-bottom:12px;font-size:12px;color:var(--text-muted)">Each cell = 1 vBucket. Color = owning node. Hover for details.</div>';
+    hmHtml += '<div class="vb-heatmap">';
+    (fullMap.map || []).forEach((entry, vbId) => {
+      const idx = nodeNameToIdx[entry.active_node] || 0;
+      const color = getNodeColor(idx);
+      const replicas = entry.replica_nodes ? entry.replica_nodes.join(', ') : 'none';
+      hmHtml += `<div class="vb-cell" style="background:${color}" title="vB ${vbId} → active: ${entry.active_node}, replicas: ${replicas}"></div>`;
+    });
+    hmHtml += '</div>';
+    hmHtml += '<div class="partition-legend" style="margin-top:12px">';
+    (fullMap.nodes || []).forEach((n, i) => {
+      hmHtml += `<div class="partition-legend-item"><div class="partition-legend-dot" style="background:${getNodeColor(i)}"></div>${n.node_name}</div>`;
+    });
+    hmHtml += '</div>';
+    document.getElementById('partition-heatmap').innerHTML = hmHtml;
+
+    // Pending transfers
+    const transfers = rebalance.pending_transfers || [];
+    if (transfers.length > 0) {
+      document.getElementById('partition-transfers').style.display = 'block';
+      document.getElementById('transfers-table').innerHTML = transfers.map(t => `<tr>
+        <td><span class="badge badge-purple">${t.vbucket_id}</span></td>
+        <td>${t.from_node}</td>
+        <td>${t.to_node}</td>
+        <td>${statusBadge(t.status)}</td>
+      </tr>`).join('');
+    } else {
+      document.getElementById('partition-transfers').style.display = 'none';
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function triggerRebalance() {
+  if (!confirm('Trigger a cluster rebalance? vBuckets will be redistributed evenly across all healthy nodes.')) return;
+  try {
+    const result = await api('/api/v1/cluster/rebalance', {method:'POST'});
+    if (result.transfers_needed > 0) {
+      toast(`Rebalance started: ${result.transfers_needed} vBucket transfers`, 'info');
+    } else {
+      toast('Cluster is already balanced', 'success');
+    }
+    loadPartitions();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Failover ----
+async function loadFailover() {
+  try {
+    const [foState, nodes] = await Promise.all([
+      api('/api/v1/cluster/failover'),
+      api('/api/v1/cluster/nodes')
+    ]);
+    const cfg = foState.config;
+    const events = foState.events || [];
+    const failedNodes = foState.failed_over_nodes || [];
+
+    // Status cards
+    document.getElementById('failover-status-cards').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:${cfg.enabled ? 'var(--success-bg)' : 'var(--danger-bg)'}">
+          ${cfg.enabled ? '&#9889;' : '&#128683;'}
+        </div>
+        <div class="stat-value" style="font-size:18px">${cfg.enabled ? 'Enabled' : 'Disabled'}</div>
+        <div class="stat-label">Auto-Failover</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#9200;</div>
+        <div class="stat-value">${cfg.timeout_secs}s</div>
+        <div class="stat-label">Failover Timeout</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:${foState.quota_exhausted ? 'var(--danger-bg)' : 'var(--info-bg)'}">&#128201;</div>
+        <div class="stat-value">${foState.auto_failover_count} / ${cfg.max_count}</div>
+        <div class="stat-label">Auto-Failover Quota</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:${failedNodes.length > 0 ? 'var(--danger-bg)' : 'var(--success-bg)'}">
+          ${failedNodes.length > 0 ? '&#128308;' : '&#9989;'}
+        </div>
+        <div class="stat-value">${failedNodes.length}</div>
+        <div class="stat-label">Failed Over Nodes</div>
+      </div>
+    `;
+
+    // Config summary
+    document.getElementById('failover-config-summary').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="font-size:15px">Configuration</h3>
+        ${foState.quota_exhausted ? '<span class="badge badge-danger">QUOTA EXHAUSTED — Manual reset required</span>' : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;font-size:13px">
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Status</span><br>
+          <strong style="color:${cfg.enabled ? 'var(--success)' : 'var(--danger)'}">${cfg.enabled ? 'Enabled' : 'Disabled'}</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Timeout</span><br><strong>${cfg.timeout_secs} seconds</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Max Auto-Failovers</span><br><strong>${cfg.max_count}</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Cooldown</span><br><strong>${cfg.cooldown_secs} seconds</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Min Cluster Size</span><br><strong>${cfg.min_cluster_size} nodes</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Data Loss OK</span><br>
+          <strong style="color:${cfg.failover_on_data_loss ? 'var(--warning)' : 'var(--success)'}">${cfg.failover_on_data_loss ? 'Yes' : 'No'}</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Last Auto-Failover</span><br><strong>${foState.last_auto_failover ? timeAgo(foState.last_auto_failover) : 'Never'}</strong>
+        </div>
+        <div style="background:var(--bg-tertiary);padding:10px 14px;border-radius:var(--radius-sm)">
+          <span style="color:var(--text-muted)">Failed Over Nodes</span><br>
+          <strong style="color:${failedNodes.length > 0 ? 'var(--danger)' : 'var(--text-primary)'}">${failedNodes.length > 0 ? failedNodes.join(', ') : 'None'}</strong>
+        </div>
+      </div>
+    `;
+
+    // Populate config modal with current values
+    document.getElementById('fo-enabled').checked = cfg.enabled;
+    document.getElementById('fo-timeout').value = cfg.timeout_secs;
+    document.getElementById('fo-max-count').value = cfg.max_count;
+    document.getElementById('fo-cooldown').value = cfg.cooldown_secs;
+    document.getElementById('fo-min-cluster').value = cfg.min_cluster_size;
+    document.getElementById('fo-data-loss').checked = cfg.failover_on_data_loss;
+
+    // Node failover actions table
+    document.getElementById('failover-nodes-table').innerHTML = nodes.map(n => {
+      const isFailedOver = failedNodes.includes(n.name);
+      const isFailed = n.status === 'Failed' || n.status === 'FailedOver';
+      const isHealthy = n.status === 'Healthy';
+      const isUnhealthy = n.status === 'Unhealthy';
+      return `<tr>
+        <td><strong>${n.name}</strong></td>
+        <td>${statusBadge(n.status)}</td>
+        <td>${timeAgo(n.last_heartbeat)}</td>
+        <td>${isUnhealthy || (isFailed && !isFailedOver) ? '<span class="badge badge-warning">Timer Active</span>' : (isFailedOver ? '<span class="badge badge-danger">Failed Over</span>' : '<span class="badge badge-success">OK</span>')}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">
+          ${isFailedOver ? `<button class="btn btn-success btn-sm" onclick="recoverNode('${n.name}')">&#128260; Recover & Rebalance</button>` : ''}
+          ${isHealthy || isUnhealthy ? `<button class="btn btn-secondary btn-sm" onclick="gracefulFailover('${n.name}')">Graceful Failover</button>` : ''}
+          ${(isHealthy || isUnhealthy || isFailed) && !isFailedOver ? `<button class="btn btn-danger btn-sm" onclick="hardFailover('${n.name}')">Hard Failover</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Failover events history
+    if (events.length === 0) {
+      document.getElementById('failover-events').innerHTML = `
+        <div class="card" style="text-align:center;padding:40px;color:var(--text-muted)">
+          <div style="font-size:36px;margin-bottom:12px;opacity:0.3">&#128203;</div>
+          <h3 style="color:var(--text-secondary);margin-bottom:4px">No Failover Events</h3>
+          <p style="font-size:13px">Failover events will appear here when nodes are failed over</p>
+        </div>`;
+    } else {
+      let evHtml = '<div style="display:flex;flex-direction:column;gap:8px">';
+      // Show newest first
+      const sorted = [...events].reverse();
+      sorted.forEach(ev => {
+        const typeColor = ev.failover_type === 'Automatic' ? 'var(--warning)' : (ev.failover_type === 'Hard' ? 'var(--danger)' : 'var(--info)');
+        const typeBg = ev.failover_type === 'Automatic' ? 'var(--warning-bg)' : (ev.failover_type === 'Hard' ? 'var(--danger-bg)' : 'var(--info-bg)');
+        evHtml += `
+          <div class="card" style="padding:14px;border-left:3px solid ${typeColor}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge" style="background:${typeBg};color:${typeColor}">${ev.failover_type}</span>
+                <strong>${ev.node_name}</strong>
+                ${ev.success ? '<span class="badge badge-success">Success</span>' : '<span class="badge badge-danger">Failed</span>'}
+              </div>
+              <span style="font-size:11px;color:var(--text-muted)">${new Date(ev.timestamp).toLocaleString()}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">${ev.reason}</div>
+            <div style="display:flex;gap:16px;font-size:12px">
+              <span><span style="color:var(--text-muted)">vBuckets affected:</span> <strong>${ev.vbuckets_affected}</strong></span>
+              <span><span style="color:var(--text-muted)">Replicas promoted:</span> <strong style="color:var(--success)">${ev.replicas_promoted}</strong></span>
+              <span><span style="color:var(--text-muted)">Rebalanced:</span> <strong>${ev.rebalance_triggered ? 'Yes' : 'No'}</strong></span>
+            </div>
+          </div>`;
+      });
+      evHtml += '</div>';
+      document.getElementById('failover-events').innerHTML = evHtml;
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveFailoverConfig() {
+  try {
+    await api('/api/v1/cluster/failover/config', {method:'POST', body:JSON.stringify({
+      enabled: document.getElementById('fo-enabled').checked,
+      timeout_secs: parseInt(document.getElementById('fo-timeout').value),
+      max_count: parseInt(document.getElementById('fo-max-count').value),
+      failover_on_data_loss: document.getElementById('fo-data-loss').checked,
+      min_cluster_size: parseInt(document.getElementById('fo-min-cluster').value),
+      cooldown_secs: parseInt(document.getElementById('fo-cooldown').value)
+    })});
+    closeModal('failover-config-modal');
+    toast('Failover configuration saved');
+    loadFailover();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function resetFailoverQuota() {
+  try {
+    await api('/api/v1/cluster/failover/reset', {method:'POST'});
+    toast('Auto-failover quota reset');
+    loadFailover();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function gracefulFailover(nodeName) {
+  if (!confirm(`Graceful failover node "${nodeName}"? Replicas will be promoted and data rebalanced.`)) return;
+  try {
+    const result = await api(`/api/v1/cluster/failover/${nodeName}`, {method:'POST', body:JSON.stringify({failover_type:'graceful'})});
+    toast(`Node "${nodeName}" failed over successfully`);
+    loadFailover();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function hardFailover(nodeName) {
+  if (!confirm(`⚠️ HARD failover node "${nodeName}"? This is immediate and may result in data loss if replicas are not available!`)) return;
+  try {
+    const result = await api(`/api/v1/cluster/failover/${nodeName}`, {method:'POST', body:JSON.stringify({failover_type:'hard'})});
+    toast(`Node "${nodeName}" hard-failed over`);
+    loadFailover();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function recoverNode(nodeName) {
+  if (!confirm(`Recover node "${nodeName}" and trigger rebalance?`)) return;
+  try {
+    const result = await api(`/api/v1/cluster/failover/${nodeName}/recover`, {method:'POST'});
+    toast(`Node "${nodeName}" recovered, rebalance triggered`);
+    loadFailover();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- Cluster ----
+async function loadCluster() {
+  try {
+    const [info, partSummary] = await Promise.all([
+      api('/api/v1/cluster'),
+      api('/api/v1/cluster/partitions/summary')
+    ]);
+    const partNodes = {};
+    (partSummary.nodes || []).forEach(n => { partNodes[n.node_name] = n; });
+
+    document.getElementById('cluster-info-cards').innerHTML = `
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--accent-glow)">&#127760;</div>
+        <div class="stat-value" style="font-size:14px;word-break:break-all">${info.name}</div>
+        <div class="stat-label">Cluster Name</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-bg)">&#128279;</div>
+        <div class="stat-value">${info.nodes.length}</div>
+        <div class="stat-label">Nodes</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--success-bg)">&#128230;</div>
+        <div class="stat-value">${info.bucket_count}</div>
+        <div class="stat-label">Buckets</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-bg)">&#128200;</div>
+        <div class="stat-value">${info.total_vbuckets || partSummary.num_vbuckets}</div>
+        <div class="stat-label">vBuckets (rev ${info.partition_map_revision || partSummary.revision})</div>
+      </div>
+    `;
+
+    document.getElementById('cluster-nodes-table').innerHTML = info.nodes.map((n, i) => {
+      const pn = partNodes[n.name] || {};
+      const isFailedOver = n.status === 'FailedOver';
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:3px;background:${getNodeColor(i)}"></div><strong>${n.name}</strong></div></td>
+        <td>${n.hostname}</td>
+        <td>${n.port}</td>
+        <td>${statusBadge(n.status)}</td>
+        <td>${n.services.map(s => `<span class="badge badge-info" style="margin-right:2px">${s}</span>`).join('')}</td>
+        <td><span class="badge badge-purple">${pn.active_count || 0} active</span> <span class="badge badge-info">${pn.replica_count || 0} replica</span></td>
+        <td>${timeAgo(n.last_heartbeat)}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">
+          ${isFailedOver ? `<button class="btn btn-success btn-sm" onclick="recoverNode('${n.name}')">Recover</button>` : `<button class="btn btn-danger btn-sm" onclick="removeNode('${n.name}')">Remove</button>`}
+          ${!isFailedOver && n.status !== 'Failed' ? `<button class="btn btn-secondary btn-sm" onclick="gracefulFailover('${n.name}')">Failover</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function addNode() {
+  try {
+    await api('/api/v1/cluster/nodes', {method:'POST', body:JSON.stringify({
+      name: document.getElementById('an-name').value,
+      hostname: document.getElementById('an-hostname').value,
+      port: parseInt(document.getElementById('an-port').value)
+    })});
+    closeModal('add-node-modal');
+    toast('Node added');
+    loadCluster();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function removeNode(name) {
+  if (!confirm(`Remove node "${name}" from cluster?`)) return;
+  try {
+    await api('/api/v1/cluster/nodes/' + name, {method:'DELETE'});
+    toast('Node removed');
+    loadCluster();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// Keyboard shortcut for query
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && currentPage === 'query') {
+    e.preventDefault();
+    executeQuery();
+  }
+});
+
+// ---- Helper: escape strings for use in HTML onclick attributes (bucket/scope/collection names) ----
+function escKey(k) {
+  return k.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ---- Helper: build doc API path with proper encoding ----
+function docApiPath(bucket, scope, collection, key) {
+  return '/api/v1/docs/' + encodeURIComponent(bucket) + '/scopes/' + encodeURIComponent(scope) + '/collections/' + encodeURIComponent(collection) + '/docs/' + encodeURIComponent(key);
+}
+
+// Initial load — restore page from URL hash
+(function initFromHash() {
+  const hash = location.hash.replace('#', '');
+  if (hash && document.getElementById('page-' + hash)) {
+    showPage(hash);
+  } else {
+    loadDashboard();
+  }
+})();
+</script>
+</body>
+</html>

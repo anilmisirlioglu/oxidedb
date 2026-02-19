@@ -1,0 +1,35 @@
+[package]
+name = "oxidedb"
+version = "0.1.0"
+edition = "2021"
+description = "OxideDB — A Couchbase-compatible NoSQL database written in Rust"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["json", "tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dashmap = "6"
+crc32fast = "1"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+anyhow = "1"
+thiserror = "2"
+rand = "0.8"
+bytes = "1"
+sha2 = "0.10"
+hmac = "0.12"
+pbkdf2 = { version = "0.12", features = ["hmac"] }
+base64 = "0.22"
+async-stream = "0.3"
+futures = "0.3"
+snap = "1"
+tokio-rustls = "0.25"
+rustls = "0.22"
+rustls-pemfile = "2"
+tokio-stream = "0.1"
