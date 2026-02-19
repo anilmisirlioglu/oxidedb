@@ -1396,7 +1396,9 @@ mod tests {
     #[test]
     fn test_flush_bucket() {
         let storage = make_storage();
-        storage.create_bucket(make_bucket_config("b1")).unwrap();
+        let mut cfg = make_bucket_config("b1");
+        cfg.flush_enabled = true;
+        storage.create_bucket(cfg).unwrap();
         let bucket = storage.get_bucket("b1").unwrap();
         bucket.upsert(S, C, "k1".to_string(), serde_json::json!({"x": 1}), None).unwrap();
         bucket.upsert(S, C, "k2".to_string(), serde_json::json!({"x": 2}), None).unwrap();

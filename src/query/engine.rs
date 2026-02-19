@@ -793,6 +793,36 @@ impl QueryEngine {
             });
         }
 
+        // ── ORDER BY (sort documents before projection) ──
+        let mut filtered: Vec<&Document> = filtered;
+        if !q.order_by.is_empty() {
+            filtered.sort_by(|a, b| {
+                for (expr, ascending) in &q.order_by {
+                    let va = self.eval_expr_on_doc(expr, a);
+                    let vb = self.eval_expr_on_doc(expr, b);
+                    let cmp = compare_json_values(Some(&va), Some(&vb));
+                    if cmp != std::cmp::Ordering::Equal {
+                        return if *ascending { cmp } else { cmp.reverse() };
+                    }
+                }
+                std::cmp::Ordering::Equal
+            });
+        }
+
+        // ── OFFSET ──
+        if let Some(offset) = q.offset {
+            if offset < filtered.len() {
+                filtered = filtered[offset..].to_vec();
+            } else {
+                filtered.clear();
+            }
+        }
+
+        // ── LIMIT ──
+        if let Some(limit) = q.limit {
+            filtered.truncate(limit);
+        }
+
         // ── Non-aggregation: project fields ──
         let mut results: Vec<serde_json::Value> = filtered
             .iter()
@@ -806,35 +836,6 @@ impl QueryEngine {
                 let key = v.to_string();
                 seen.insert(key)
             });
-        }
-
-        // ── ORDER BY ──
-        if !q.order_by.is_empty() {
-            results.sort_by(|a, b| {
-                for (expr, ascending) in &q.order_by {
-                    let va = self.eval_expr_on_result(expr, a);
-                    let vb = self.eval_expr_on_result(expr, b);
-                    let cmp = compare_json_values(Some(&va), Some(&vb));
-                    if cmp != std::cmp::Ordering::Equal {
-                        return if *ascending { cmp } else { cmp.reverse() };
-                    }
-                }
-                std::cmp::Ordering::Equal
-            });
-        }
-
-        // ── OFFSET ──
-        if let Some(offset) = q.offset {
-            if offset < results.len() {
-                results = results[offset..].to_vec();
-            } else {
-                results.clear();
-            }
-        }
-
-        // ── LIMIT ──
-        if let Some(limit) = q.limit {
-            results.truncate(limit);
         }
 
         let elapsed = start.elapsed().as_millis() as u64;
@@ -2561,7 +2562,6 @@ impl QueryEngine {
         }
 
         let mut result = serde_json::Map::new();
-        result.insert("_key".to_string(), serde_json::json!(doc.key));
 
         for sel in select_exprs {
             if let SelectExpr::Expr { expr, alias } = sel {
@@ -4633,13 +4633,13 @@ mod tests {
         let engine = make_query_engine();
         seed_docs(&engine);
         let req = QueryRequest {
-            statement: "SELECT name FROM test ORDER BY age ASC".to_string(),
+            statement: "SELECT * FROM test ORDER BY age ASC".to_string(),
             params: None,
         };
         let result = engine.execute(&req).unwrap();
         assert_eq!(result.results.len(), 4);
-        // Bob (25) should be first
-        assert_eq!(result.results[0]["name"], "Bob");
+        // Bob (25) should be first — age is in doc.age for SELECT *
+        assert_eq!(result.results[0]["doc"]["age"], 25);
     }
 
     #[test]
