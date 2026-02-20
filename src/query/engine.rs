@@ -46,6 +46,8 @@ pub struct QueryMetrics {
 #[derive(Debug)]
 enum Statement {
     Select(SelectQuery),
+    /// SELECT without FROM clause (e.g. `SELECT 1`, `SELECT 'keep alive'`)
+    DualSelect(Vec<SelectExpr>),
     Insert(InsertStmt),
     Update(UpdateStmt),
     Delete(DeleteStmt),
@@ -487,6 +489,14 @@ impl QueryEngine {
             return Ok(Statement::Explain(Box::new(inner_stmt)));
         }
         if upper.starts_with("SELECT") {
+            // Check if this is a FROM-less SELECT (e.g. SELECT 1, SELECT 'keep alive')
+            // These are valid in N1QL and used by tools like DataGrip as keep-alive pings
+            if !upper.contains(" FROM ") {
+                let select_start = if upper.starts_with("SELECT DISTINCT ") { 16 } else { 6 };
+                let select_part = statement.trim()[select_start..].trim();
+                let select_exprs = self.parse_select_exprs(select_part)?;
+                return Ok(Statement::DualSelect(select_exprs));
+            }
             return Ok(Statement::Select(self.parse_select(statement)?));
         }
         if upper.starts_with("INSERT") {
@@ -518,6 +528,7 @@ impl QueryEngine {
     fn execute_statement(&self, stmt: &Statement) -> Result<QueryResult> {
         match stmt {
             Statement::Select(q) => self.execute_select(q),
+            Statement::DualSelect(exprs) => self.execute_dual_select(exprs),
             Statement::Insert(ins) => self.execute_insert(ins),
             Statement::Update(upd) => self.execute_update(upd),
             Statement::Delete(del) => self.execute_delete(del),
@@ -525,6 +536,39 @@ impl QueryEngine {
             Statement::DropIndex(di) => self.execute_drop_index(di),
             Statement::Explain(inner) => self.execute_explain(inner),
         }
+    }
+
+    /// Execute a FROM-less SELECT (e.g. `SELECT 1`, `SELECT 'keep alive'`, `SELECT NOW_STR()`)
+    /// Returns one row with the evaluated expressions, matching Couchbase N1QL behavior.
+    fn execute_dual_select(&self, exprs: &[SelectExpr]) -> Result<QueryResult> {
+        let start = std::time::Instant::now();
+        let null_doc = serde_json::Value::Null;
+        let mut row = serde_json::Map::new();
+
+        for (i, se) in exprs.iter().enumerate() {
+            match se {
+                SelectExpr::Star => {
+                    // SELECT * without FROM — return empty row
+                }
+                SelectExpr::Expr { expr, alias } => {
+                    let value = self.resolve_expr(expr, &null_doc, "");
+                    let key = alias.clone().unwrap_or_else(|| format!("${}", i + 1));
+                    row.insert(key, value);
+                }
+            }
+        }
+
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QueryResult {
+            status: "success".to_string(),
+            results: vec![serde_json::Value::Object(row)],
+            metrics: QueryMetrics {
+                result_count: 1,
+                elapsed_ms: elapsed,
+                scanned_count: 0,
+                index_used: None,
+            },
+        })
     }
 
     // =================================================================
@@ -535,6 +579,7 @@ impl QueryEngine {
         let start = std::time::Instant::now();
         let plan = match stmt {
             Statement::Select(q) => self.build_select_plan(q),
+            Statement::DualSelect(_) => serde_json::json!({"plan": "DUAL_SELECT", "strategy": "expression_eval", "scan": "none"}),
             Statement::Insert(_) => serde_json::json!({"plan": "INSERT", "strategy": "direct_kv_write"}),
             Statement::Update(u) => serde_json::json!({
                 "plan": "UPDATE",
