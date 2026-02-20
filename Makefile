@@ -1,4 +1,4 @@
-.PHONY: build run dev clean stop restart test logs help \
+.PHONY: build run dev clean stop restart test logs help seed setup \
        cluster cluster-stop cluster-status cluster-down cluster-up \
        node1 node2 node3 stop1 stop2 stop3 \
        join join1 join2 join3 rebalance \
@@ -129,6 +129,14 @@ test:  ## Run all tests
 health:  ## Quick health check via HTTP
 	@curl -s http://127.0.0.1:$(PORT)/api/v1/cluster/info | head -c 500
 	@echo
+
+# ── Seed ────────────────────────────────────────────────────
+seed:  ## Seed test buckets & sample data
+	@bash scripts/seed.sh $(PORT)
+
+setup: dev  ## Build, start, and seed with test data
+	@sleep 2
+	@bash scripts/seed.sh $(PORT)
 
 # ── Multi-node (local dev cluster) ─────────────────────────────
 
@@ -275,6 +283,14 @@ down: cluster-down  ## Alias for cluster-down
 cluster-up: cluster  ## Alias for cluster (start fresh cluster)
 
 up: dev  ## Alias — start single node
+
+# ── Seed test data ──────────────────────────────────────────
+seed:  ## Seed test buckets & sample data into running server
+	@bash scripts/seed.sh $(PORT)
+
+setup: dev  ## Build, start, and seed with test data
+	@sleep 2
+	@bash scripts/seed.sh $(PORT)
 
 ## Nuclear option — kill all oxidedb processes system-wide
 kill-all:  ## Force-kill ALL oxidedb processes
