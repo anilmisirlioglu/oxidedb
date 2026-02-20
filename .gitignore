@@ -3,6 +3,7 @@
 
 # Logs
 .server.log
+.server.pid
 .node-*.log
 
 # Data directories
