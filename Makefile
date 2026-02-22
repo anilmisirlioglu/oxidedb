@@ -252,31 +252,22 @@ cluster-status:  ## Show cluster status for all running nodes
 		|| echo "║    (node-1 not reachable)"
 	@echo "╚══════════════════════════════════════════════════════╝"
 
-## Graceful cluster shutdown — remove nodes from cluster, then stop processes
-cluster-down:  ## Gracefully drain & shut down the entire cluster
-	@echo "🔻 Gracefully shutting down cluster..."
-	@echo ""
-	@echo "📤 Removing nodes from cluster (drain)..."
-	@for i in $$(seq $(NUM_NODES) -1 2); do \
-		REST=$$(( 8090 + $$i )); \
-		PF=.node-$$i.pid; \
-		if [ -f $$PF ] && kill -0 $$(cat $$PF) 2>/dev/null; then \
-			echo "  → Removing node-$$i from cluster..."; \
-			curl -s -X DELETE http://127.0.0.1:8091/api/v1/cluster/nodes/node-$$i 2>/dev/null \
-				| python3 -c "import sys,json; d=json.load(sys.stdin); print('    ', d.get('message', d))" 2>/dev/null \
-				|| echo "    ⚠️  remove failed (node may already be gone)"; \
-		fi; \
-	done
-	@echo ""
-	@echo "⚖️  Rebalancing remaining node..."
-	@curl -s -X POST http://127.0.0.1:8091/api/v1/cluster/rebalance 2>/dev/null \
-		| python3 -c "import sys,json; d=json.load(sys.stdin); print('  ', d.get('message', d))" 2>/dev/null || true
-	@sleep 1
+## Graceful cluster shutdown — stop all node processes directly
+cluster-down:  ## Gracefully shut down the entire cluster
+	@echo "🔻 Shutting down cluster..."
 	@echo ""
 	@echo "🛑 Stopping all node processes..."
 	@for i in $$(seq 1 $(NUM_NODES)); do \
 		$(MAKE) _stop_node N=$$i 2>/dev/null; \
 	done
+	@sleep 1
+	@# Ensure nothing is left behind
+	@REMAINING=$$(pgrep -f "target/debug/$(BINARY)" 2>/dev/null || true); \
+	if [ -n "$$REMAINING" ]; then \
+		echo "  ⚠️  Orphan processes found, force-killing..."; \
+		pkill -9 -f "target/debug/$(BINARY)" 2>/dev/null || true; \
+		rm -f .node-*.pid; \
+	fi
 	@echo ""
 	@echo "✅ Cluster is down."
 
