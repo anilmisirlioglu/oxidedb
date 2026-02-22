@@ -7,6 +7,7 @@ pub mod dcp_routes;
 pub mod document_routes;
 pub mod fts_routes;
 pub mod index_routes;
+pub mod metrics;
 pub mod query_routes;
 pub mod rbac_routes;
 pub mod replication_routes;
@@ -233,6 +234,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Couchbase SDK bootstrap endpoints
         .merge(couchbase_routes)
         .route("/ui", get(web_ui::serve_ui))
+        .route("/metrics", get(metrics::prometheus_metrics))
         .route("/", get(root_handler))
         .route("/health", get(health_check))
         .layer(TraceLayer::new_for_http())
@@ -271,6 +273,7 @@ async fn root_handler() -> axum::Json<serde_json::Value> {
             "server_groups": "/api/v1/cluster/server-groups",
             "rebalance_groups": "/api/v1/cluster/rebalance-groups",
             "health": "/health",
+            "metrics": "/metrics",
             "ui": "/ui"
         }
     }))

@@ -210,6 +210,9 @@ async fn main() -> anyhow::Result<()> {
     };
     let tls_acceptor = tls_state.acceptor.clone();
 
+    // Initialize Prometheus uptime clock
+    api::metrics::init_start_time();
+
     // Build router
     let app = api::build_router(state);
 
