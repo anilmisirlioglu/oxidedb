@@ -7,6 +7,7 @@
 .node-*.log
 
 # Data directories
+/data/
 /data-*
 /tmp/oxidedb-*
 
