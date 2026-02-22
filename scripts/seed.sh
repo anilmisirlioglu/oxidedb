@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# seed.sh — OxideDB'yi test bucket ve örnek data ile seed'ler
-# Kullanım:
-#   ./scripts/seed.sh              (varsayılan: localhost:8091)
-#   ./scripts/seed.sh 8092         (farklı port)
+# seed.sh — Seeds OxideDB with test buckets and sample data
+# Usage:
+#   ./scripts/seed.sh              (default: localhost:8091)
+#   ./scripts/seed.sh 8092         (custom port)
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -20,44 +20,44 @@ log()  { echo -e "${GREEN}✅ $*${NC}"; }
 info() { echo -e "${CYAN}ℹ️  $*${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $*${NC}"; }
 
-# ── Sağlık kontrolü ─────────────────────────────────────────
-info "Sunucu kontrolü: ${BASE}"
+# ── Health check ─────────────────────────────────────────────
+info "Checking server at: ${BASE}"
 if ! curl -sf "${BASE}/pools" > /dev/null 2>&1; then
-    echo "❌ Sunucu ${BASE} adresinde çalışmıyor!"
+    echo "❌ Server is not running at ${BASE}!"
     echo ""
-    echo "Önce sunucuyu başlatın:"
-    echo "  make dev      # arka planda çalıştır"
-    echo "  make run      # ön planda çalıştır"
+    echo "Start the server first:"
+    echo "  make dev      # run in the background"
+    echo "  make run      # run in the foreground"
     exit 1
 fi
-log "Sunucu çalışıyor"
+log "Server is running"
 
 # ═══════════════════════════════════════════════════════════════
-# 1) BUCKET'LAR
+# 1) BUCKETS
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 📦 Bucket'lar oluşturuluyor..."
+echo " 📦 Creating buckets..."
 echo "═══════════════════════════════════════════════════════════"
 
 # travel-sample bucket
 curl -sf -X POST "${API}/buckets" \
   -H 'Content-Type: application/json' \
   -d '{"name":"travel-sample","bucket_type":"couchbase","ram_quota_mb":256,"num_replicas":0}' \
-  > /dev/null 2>&1 && log "travel-sample bucket oluşturuldu" || warn "travel-sample zaten var"
+  > /dev/null 2>&1 && log "travel-sample bucket created" || warn "travel-sample already exists"
 
 # test-bucket
 curl -sf -X POST "${API}/buckets" \
   -H 'Content-Type: application/json' \
   -d '{"name":"test-bucket","bucket_type":"couchbase","ram_quota_mb":128,"num_replicas":0}' \
-  > /dev/null 2>&1 && log "test-bucket oluşturuldu" || warn "test-bucket zaten var"
+  > /dev/null 2>&1 && log "test-bucket created" || warn "test-bucket already exists"
 
 # users bucket
 curl -sf -X POST "${API}/buckets" \
   -H 'Content-Type: application/json' \
   -d '{"name":"users","bucket_type":"couchbase","ram_quota_mb":128,"num_replicas":0}' \
-  > /dev/null 2>&1 && log "users bucket oluşturuldu" || warn "users zaten var"
+  > /dev/null 2>&1 && log "users bucket created" || warn "users already exists"
 
 # ═══════════════════════════════════════════════════════════════
 # 2) TRAVEL-SAMPLE DATA
@@ -65,7 +65,7 @@ curl -sf -X POST "${API}/buckets" \
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " ✈️  travel-sample verileri yükleniyor..."
+echo " ✈️  Loading travel-sample data..."
 echo "═══════════════════════════════════════════════════════════"
 
 DOC_BASE="${API}/docs/travel-sample/scopes/_default/collections/_default/docs"
@@ -86,7 +86,7 @@ for i in 1 2 3 4 5; do
       }
     }" > /dev/null 2>&1
 done
-log "5 airline dokümanı eklendi"
+log "5 airline documents inserted"
 
 # Airports
 airports=(
@@ -102,7 +102,7 @@ for i in "${!airports[@]}"; do
     -H 'Content-Type: application/json' \
     -d "{\"value\": ${airports[$i]}}" > /dev/null 2>&1
 done
-log "5 airport dokümanı eklendi"
+log "5 airport documents inserted"
 
 # Routes
 for i in 1 2 3 4 5; do
@@ -123,7 +123,7 @@ for i in 1 2 3 4 5; do
       }
     }" > /dev/null 2>&1
 done
-log "5 route dokümanı eklendi"
+log "5 route documents inserted"
 
 # Hotels
 hotels=(
@@ -139,7 +139,7 @@ for i in "${!hotels[@]}"; do
     -H 'Content-Type: application/json' \
     -d "{\"value\": ${hotels[$i]}}" > /dev/null 2>&1
 done
-log "5 hotel dokümanı eklendi"
+log "5 hotel documents inserted"
 
 # ═══════════════════════════════════════════════════════════════
 # 3) USERS BUCKET DATA
@@ -147,15 +147,15 @@ log "5 hotel dokümanı eklendi"
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 👤 users verileri yükleniyor..."
+echo " 👤 Loading users data..."
 echo "═══════════════════════════════════════════════════════════"
 
 USER_BASE="${API}/docs/users/scopes/_default/collections/_default/docs"
 
 users=(
-  '{"type":"user","username":"anil","email":"anil@example.com","name":"Anıl Yılmaz","role":"admin","active":true,"created":"2025-01-15T10:30:00Z"}'
+  '{"type":"user","username":"anil","email":"anil@example.com","name":"Anil Yilmaz","role":"admin","active":true,"created":"2025-01-15T10:30:00Z"}'
   '{"type":"user","username":"mehmet","email":"mehmet@example.com","name":"Mehmet Demir","role":"developer","active":true,"created":"2025-02-20T14:00:00Z"}'
-  '{"type":"user","username":"ayse","email":"ayse@example.com","name":"Ayşe Kaya","role":"analyst","active":true,"created":"2025-03-10T09:15:00Z"}'
+  '{"type":"user","username":"ayse","email":"ayse@example.com","name":"Ayse Kaya","role":"analyst","active":true,"created":"2025-03-10T09:15:00Z"}'
   '{"type":"user","username":"john","email":"john@example.com","name":"John Smith","role":"viewer","active":false,"created":"2024-12-01T08:00:00Z"}'
   '{"type":"user","username":"elena","email":"elena@example.com","name":"Elena Popov","role":"developer","active":true,"created":"2025-04-05T16:45:00Z"}'
 )
@@ -165,7 +165,7 @@ for i in "${!users[@]}"; do
     -H 'Content-Type: application/json' \
     -d "{\"value\": ${users[$i]}}" > /dev/null 2>&1
 done
-log "5 user dokümanı eklendi"
+log "5 user documents inserted"
 
 # ═══════════════════════════════════════════════════════════════
 # 4) TEST-BUCKET DATA
@@ -173,7 +173,7 @@ log "5 user dokümanı eklendi"
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 🧪 test-bucket verileri yükleniyor..."
+echo " 🧪 Loading test-bucket data..."
 echo "═══════════════════════════════════════════════════════════"
 
 TEST_BASE="${API}/docs/test-bucket/scopes/_default/collections/_default/docs"
@@ -196,15 +196,15 @@ for i in $(seq 1 10); do
       }
     }" > /dev/null 2>&1
 done
-log "10 test dokümanı eklendi"
+log "10 test documents inserted"
 
 # ═══════════════════════════════════════════════════════════════
-# 5) INDEX'LER
+# 5) INDEXES
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 🗂️  Index'ler oluşturuluyor..."
+echo " 🗂️  Creating indexes..."
 echo "═══════════════════════════════════════════════════════════"
 
 QUERY="${BASE}/query/service"
@@ -212,30 +212,30 @@ QUERY="${BASE}/query/service"
 curl -sf -X POST "${QUERY}" \
   -H 'Content-Type: application/json' \
   -d '{"statement":"CREATE INDEX idx_airline_country ON `travel-sample`(country) WHERE type=\"airline\""}' \
-  > /dev/null 2>&1 && log "idx_airline_country oluşturuldu" || warn "index zaten var"
+  > /dev/null 2>&1 && log "idx_airline_country created" || warn "index already exists"
 
 curl -sf -X POST "${QUERY}" \
   -H 'Content-Type: application/json' \
   -d '{"statement":"CREATE INDEX idx_airport_city ON `travel-sample`(city)"}' \
-  > /dev/null 2>&1 && log "idx_airport_city oluşturuldu" || warn "index zaten var"
+  > /dev/null 2>&1 && log "idx_airport_city created" || warn "index already exists"
 
 curl -sf -X POST "${QUERY}" \
   -H 'Content-Type: application/json' \
   -d '{"statement":"CREATE INDEX idx_hotel_country ON `travel-sample`(country) WHERE type=\"hotel\""}' \
-  > /dev/null 2>&1 && log "idx_hotel_country oluşturuldu" || warn "index zaten var"
+  > /dev/null 2>&1 && log "idx_hotel_country created" || warn "index already exists"
 
 curl -sf -X POST "${QUERY}" \
   -H 'Content-Type: application/json' \
   -d '{"statement":"CREATE INDEX idx_user_role ON `users`(role)"}' \
-  > /dev/null 2>&1 && log "idx_user_role oluşturuldu" || warn "index zaten var"
+  > /dev/null 2>&1 && log "idx_user_role created" || warn "index already exists"
 
 # ═══════════════════════════════════════════════════════════════
-# 6) DOĞRULAMA
+# 6) VERIFICATION
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 🔍 Doğrulama sorguları..."
+echo " 🔍 Running verification queries..."
 echo "═══════════════════════════════════════════════════════════"
 
 echo ""
@@ -247,8 +247,8 @@ curl -sf -X POST "${QUERY}" \
 import sys, json
 d = json.load(sys.stdin)
 results = d.get('results', [])
-print(f'  → {len(results)} airline bulundu')
-" 2>/dev/null || warn "sorgu başarısız"
+print(f'  → {len(results)} airlines found')
+" 2>/dev/null || warn "query failed"
 
 info "SELECT * FROM travel-sample WHERE type='hotel' AND country='Turkey'"
 curl -sf -X POST "${QUERY}" \
@@ -258,8 +258,8 @@ curl -sf -X POST "${QUERY}" \
 import sys, json
 d = json.load(sys.stdin)
 results = d.get('results', [])
-print(f'  → {len(results)} Türkiye oteli bulundu')
-" 2>/dev/null || warn "sorgu başarısız"
+print(f'  → {len(results)} hotels in Turkey found')
+" 2>/dev/null || warn "query failed"
 
 info "SELECT * FROM users WHERE role='developer'"
 curl -sf -X POST "${QUERY}" \
@@ -269,10 +269,10 @@ curl -sf -X POST "${QUERY}" \
 import sys, json
 d = json.load(sys.stdin)
 results = d.get('results', [])
-print(f'  → {len(results)} developer bulundu')
-" 2>/dev/null || warn "sorgu başarısız"
+print(f'  → {len(results)} developers found')
+" 2>/dev/null || warn "query failed"
 
-info "SELECT 'keep alive' (DataGrip ping testi)"
+info "SELECT 'keep alive' (DataGrip ping test)"
 curl -sf -X POST "${QUERY}" \
   -H 'Content-Type: application/json' \
   -d '{"statement":"SELECT '\''keep alive'\''"}' \
@@ -281,38 +281,38 @@ import sys, json
 d = json.load(sys.stdin)
 results = d.get('results', [])
 if results:
-    print(f'  → Başarılı: {results[0]}')
+    print(f'  → Success: {results[0]}')
 else:
-    print('  → Sonuç yok')
-" 2>/dev/null || warn "sorgu başarısız"
+    print('  → No results')
+" 2>/dev/null || warn "query failed"
 
 # ═══════════════════════════════════════════════════════════════
-# ÖZET
+# SUMMARY
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo " 🎉 SEED TAMAMLANDI!"
+echo " 🎉 SEED COMPLETE!"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
-echo " Bucket'lar:"
-echo "   • travel-sample  → 20 doküman (airline, airport, route, hotel)"
-echo "   • users          →  5 doküman (user profilleri)"
-echo "   • test-bucket    → 10 doküman (test verileri)"
+echo " Buckets:"
+echo "   • travel-sample  → 20 documents (airline, airport, route, hotel)"
+echo "   • users          →  5 documents (user profiles)"
+echo "   • test-bucket    → 10 documents (test data)"
 echo ""
-echo " Bağlantı bilgileri:"
+echo " Connection details:"
 echo "   REST API   : ${BASE}"
 echo "   Query (N1QL): ${QUERY}"
 echo "   Memcached  : 127.0.0.1:11210"
 echo ""
-echo " DataGrip bağlantısı:"
+echo " DataGrip connection:"
 echo "   Host     : 127.0.0.1"
 echo "   Port     : ${PORT}"
 echo "   Username : Administrator"
 echo "   Password : password"
 echo "   Bucket   : travel-sample"
 echo ""
-echo " Örnek sorgular:"
+echo " Example queries:"
 echo "   SELECT * FROM \`travel-sample\` WHERE type = 'airline'"
 echo "   SELECT * FROM \`travel-sample\` WHERE city = 'Istanbul'"
 echo "   SELECT * FROM \`users\` WHERE role = 'developer'"
