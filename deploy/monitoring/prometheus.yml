@@ -1,0 +1,25 @@
+# OxideDB Prometheus Configuration
+# Scrapes metrics from local OxideDB nodes (up to 3)
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: "oxidedb"
+    metrics_path: "/metrics"
+    static_configs:
+      # node-1 (default single-node)
+      - targets: ["host.containers.internal:8091"]
+        labels:
+          node: "node-1"
+      # node-2 (multi-node cluster)
+      - targets: ["host.containers.internal:8092"]
+        labels:
+          node: "node-2"
+      # node-3 (multi-node cluster)
+      - targets: ["host.containers.internal:8093"]
+        labels:
+          node: "node-3"
+    # Don't fail if some nodes are down
+    honor_labels: true

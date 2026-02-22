@@ -136,11 +136,11 @@ health:  ## Quick health check via HTTP
 
 # ── Seed ────────────────────────────────────────────────────
 seed:  ## Seed test buckets & sample data
-	@bash scripts/seed.sh $(PORT)
+	@bash deploy/scripts/seed.sh $(PORT)
 
 setup: dev  ## Build, start, and seed with test data
 	@sleep 2
-	@bash scripts/seed.sh $(PORT)
+	@bash deploy/scripts/seed.sh $(PORT)
 
 # ── Multi-node (local dev cluster) ─────────────────────────────
 
@@ -288,7 +288,7 @@ cluster-up: cluster  ## Start fresh cluster and seed test data
 	@echo ""
 	@echo "🌱 Seeding test data..."
 	@sleep 2
-	@bash scripts/seed.sh $(PORT)
+	@bash deploy/scripts/seed.sh $(PORT)
 
 up: dev  ## Alias — start single node
 
@@ -349,7 +349,7 @@ _stop_node:
 # ── Monitoring (Prometheus + Grafana via Docker) ─────────────────
 monitoring:  ## Start Prometheus + Grafana (Docker)
 	@echo "📊 Starting Prometheus + Grafana..."
-	@$(DOCKER) compose -f monitoring/docker-compose.yml up -d
+	@$(DOCKER) compose -f deploy/monitoring/docker-compose.yml up -d
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════╗"
 	@echo "║  Monitoring Stack                                    ║"
@@ -368,19 +368,19 @@ monitoring:  ## Start Prometheus + Grafana (Docker)
 
 monitoring-stop:  ## Stop Prometheus + Grafana
 	@echo "🛑 Stopping monitoring stack..."
-	@$(DOCKER) compose -f monitoring/docker-compose.yml down
+	@$(DOCKER) compose -f deploy/monitoring/docker-compose.yml down
 	@echo "✅ Monitoring stopped."
 
 monitoring-restart:  ## Restart monitoring stack
-	@$(DOCKER) compose -f monitoring/docker-compose.yml restart
+	@$(DOCKER) compose -f deploy/monitoring/docker-compose.yml restart
 	@echo "✅ Monitoring restarted."
 
 monitoring-logs:  ## Tail monitoring container logs
-	@$(DOCKER) compose -f monitoring/docker-compose.yml logs -f
+	@$(DOCKER) compose -f deploy/monitoring/docker-compose.yml logs -f
 
 monitoring-clean:  ## Stop and remove monitoring data volumes
 	@echo "🗑️  Removing monitoring stack and data..."
-	@$(DOCKER) compose -f monitoring/docker-compose.yml down -v
+	@$(DOCKER) compose -f deploy/monitoring/docker-compose.yml down -v
 	@echo "✅ Monitoring data cleaned."
 
 # ── Help ────────────────────────────────────────────────────────
