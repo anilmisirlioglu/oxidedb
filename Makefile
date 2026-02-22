@@ -2,7 +2,8 @@
        cluster cluster-stop cluster-status cluster-down cluster-up \
        node1 node2 node3 stop1 stop2 stop3 \
        join join1 join2 join3 rebalance \
-       down up kill-all
+       down up kill-all \
+       monitoring monitoring-stop monitoring-restart monitoring-logs
 
 # ── Config ──────────────────────────────────────────────────────
 BINARY      := oxidedb
@@ -19,6 +20,9 @@ NUM_NODES   ?= 3
 
 # Persistence: set to false to disable WAL persistence
 PERSIST     ?= true
+
+# Container runtime (podman or docker)
+DOCKER      ?= $(shell command -v podman 2>/dev/null || echo docker)
 
 # Extra args (override: make run EXTRA="--tls-enabled")
 EXTRA       ?=
@@ -279,18 +283,14 @@ cluster-down:  ## Gracefully drain & shut down the entire cluster
 ## Quick alias
 down: cluster-down  ## Alias for cluster-down
 
-## Bring cluster back up (build + start + join + rebalance)
-cluster-up: cluster  ## Alias for cluster (start fresh cluster)
-
-up: dev  ## Alias — start single node
-
-# ── Seed test data ──────────────────────────────────────────
-seed:  ## Seed test buckets & sample data into running server
-	@bash scripts/seed.sh $(PORT)
-
-setup: dev  ## Build, start, and seed with test data
+## Bring cluster back up (build + start + join + rebalance + seed)
+cluster-up: cluster  ## Start fresh cluster and seed test data
+	@echo ""
+	@echo "🌱 Seeding test data..."
 	@sleep 2
 	@bash scripts/seed.sh $(PORT)
+
+up: dev  ## Alias — start single node
 
 ## Nuclear option — kill all oxidedb processes system-wide
 kill-all:  ## Force-kill ALL oxidedb processes
@@ -345,6 +345,43 @@ _stop_node:
 		fi; \
 		rm -f $$PF; \
 	fi
+
+# ── Monitoring (Prometheus + Grafana via Docker) ─────────────────
+monitoring:  ## Start Prometheus + Grafana (Docker)
+	@echo "📊 Starting Prometheus + Grafana..."
+	@$(DOCKER) compose -f monitoring/docker-compose.yml up -d
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════╗"
+	@echo "║  Monitoring Stack                                    ║"
+	@echo "╠══════════════════════════════════════════════════════╣"
+	@echo "║  Prometheus   → http://localhost:9090                ║"
+	@echo "║  Grafana      → http://localhost:3001                ║"
+	@echo "║  Grafana auth → admin / oxidedb                     ║"
+	@echo "╠══════════════════════════════════════════════════════╣"
+	@echo "║  Scraping:                                           ║"
+	@echo "║    node-1 → host.containers.internal:8091/metrics    ║"
+	@echo "║    node-2 → host.containers.internal:8092/metrics    ║"
+	@echo "║    node-3 → host.containers.internal:8093/metrics    ║"
+	@echo "╠══════════════════════════════════════════════════════╣"
+	@echo "║  Dashboard auto-provisioned: OxideDB Overview        ║"
+	@echo "╚══════════════════════════════════════════════════════╝"
+
+monitoring-stop:  ## Stop Prometheus + Grafana
+	@echo "🛑 Stopping monitoring stack..."
+	@$(DOCKER) compose -f monitoring/docker-compose.yml down
+	@echo "✅ Monitoring stopped."
+
+monitoring-restart:  ## Restart monitoring stack
+	@$(DOCKER) compose -f monitoring/docker-compose.yml restart
+	@echo "✅ Monitoring restarted."
+
+monitoring-logs:  ## Tail monitoring container logs
+	@$(DOCKER) compose -f monitoring/docker-compose.yml logs -f
+
+monitoring-clean:  ## Stop and remove monitoring data volumes
+	@echo "🗑️  Removing monitoring stack and data..."
+	@$(DOCKER) compose -f monitoring/docker-compose.yml down -v
+	@echo "✅ Monitoring data cleaned."
 
 # ── Help ────────────────────────────────────────────────────────
 help:  ## Show this help
